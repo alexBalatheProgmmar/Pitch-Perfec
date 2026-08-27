@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">লাইফভল্ট</string>
+    <string name="tagline">জরুরি সবকিছু শেয়ার করুন। আর কখনো ভুলবেন না।</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">হোম</string>
+    <string name="nav_inbox">ইনবক্স</string>
+    <string name="nav_calendar">ক্যালেন্ডার</string>
+    <string name="nav_vault">ভল্ট</string>
+    <string name="nav_capture">ক্যাপচার</string>
+    <string name="nav_settings">সেটিংস</string>
+
+    <!-- Greetings & Summaries -->
+    <string name="greeting_morning">শুভ সকাল 👋</string>
+    <string name="greeting_afternoon">শুভ অপরাহ্ন 👋</string>
+    <string name="greeting_evening">শুভ সন্ধ্যা 👋</string>
+    <string name="summary_all_caught_up">আপনার সব কাজ শেষ 🎉</string>
+    <string name="summary_needs_attention">%1$dটি বিষয়ে আপনার মনোযোগ প্রয়োজন</string>
+
+    <!-- Home Sections -->
+    <string name="section_needs_attention">মনোযোগ প্রয়োজন</string>
+    <string name="section_coming_up">আসন্ন বিষয়সমূহ</string>
+    <string name="section_completed">সম্পন্ন হয়েছে</string>
+    <string name="action_done">সম্পন্ন</string>
+    <string name="action_snooze">পরে স্মরণ করান</string>
+    <string name="action_undo">বাতিল করুন</string>
+
+    <!-- Capture -->
+    <string name="capture_title">ক্যাপচার করুন</string>
+    <string name="capture_text">টেক্সট</string>
+    <string name="capture_image">ছবি</string>
+    <string name="capture_camera">ক্যামেরা</string>
+    <string name="capture_document">ডকুমেন্ট</string>
+    <string name="capture_link">লিংক</string>
+    <string name="capture_voice">ভয়েস</string>
+    <string name="capture_text_hint">যেকোনো বার্তা পেস্ট বা লিখুন (যেমন: \"বিদ্যুৎ বিল ১,৮৫০ টাকা ২ সেপ্টেম্বর শেষ তারিখ\")...</string>
+    <string name="capture_analyze">এআই দিয়ে বুঝুন</string>
+    <string name="capture_voice_listening">শুনছি… স্পষ্ট করে বলুন</string>
+    <string name="capture_voice_tap_to_start">ভয়েস রেকর্ড করতে ট্যাপ করুন</string>
+
+    <!-- Analysis States -->
+    <string name="analyzing_title">তথ্য বিশ্লেষণ করা হচ্ছে…</string>
+    <string name="analyzing_stage_reading">বিষয়বস্তু পড়া হচ্ছে…</string>
+    <string name="analyzing_stage_dates">তারিখ ও টাকার পরিমাণ খোঁজা হচ্ছে…</string>
+    <string name="analyzing_stage_organizing">কাজের তথ্য হিসেবে সাজানো হচ্ছে…</string>
+
+    <!-- Confirmation Dialog -->
+    <string name="confirm_dialog_title">সম্ভাব্য প্রয়োজনীয় তথ্য পাওয়া গেছে</string>
+    <string name="confirm_dialog_subtitle">তথ্যটি কি সঠিক?</string>
+    <string name="confidence_high">সুস্পষ্ট মনে হচ্ছে</string>
+    <string name="confidence_medium">পুনরায় দেখে নিন</string>
+    <string name="confidence_low">নিশ্চিত নই</string>
+    <string name="duplicate_warning">মনে হচ্ছে আপনি এটি আগেই সংরক্ষণ করেছেন।</string>
+    <string name="action_confirm">নিশ্চিত করুন</string>
+    <string name="action_edit">সম্পাদনা</string>
+    <string name="action_dismiss">বাতিল</string>
+    <string name="action_save_anyway">তবুও সংরক্ষণ করুন</string>
+    <string name="action_open_existing">বিদ্যমানটি দেখুন</string>
+
+    <!-- Types -->
+    <string name="type_task">কাজ</string>
+    <string name="type_deadline">সময়সীমা</string>
+    <string name="type_appointment">সাক্ষাতকার</string>
+    <string name="type_payment">বিল / পেমেন্ট</string>
+    <string name="type_subscription">সাবস্ক্রিপশন</string>
+    <string name="type_return">ফেরত</string>
+    <string name="type_warranty">ওয়ারেন্টি</string>
+    <string name="type_delivery">ডেলিভারি</string>
+    <string name="type_event">ইভেন্ট</string>
+    <string name="type_reminder">স্মারক</string>
+    <string name="type_important">গুরুত্বপূর্ণ তথ্য</string>
+
+    <!-- Categories -->
+    <string name="category_education">শিক্ষা</string>
+    <string name="category_finance">আর্থিক</string>
+    <string name="category_shopping">কেনাকাটা</string>
+    <string name="category_health">স্বাস্থ্য</string>
+    <string name="category_travel">ভ্রমণ</string>
+    <string name="category_work">কর্মক্ষেত্র</string>
+    <string name="category_home">বাড়ি</string>
+    <string name="category_technology">প্রযুক্তি</string>
+    <string name="category_events">অনুষ্ঠান</string>
+    <string name="category_documents">ডকুমেন্ট</string>
+    <string name="category_delivery">ডেলিভারি</string>
+    <string name="category_warranty">ওয়ারেন্টি</string>
+    <string name="category_general">সাধারণ</string>
+
+    <!-- Priorities -->
+    <string name="priority_high">উচ্চ</string>
+    <string name="priority_medium">মাঝারি</string>
+    <string name="priority_low">নিম্ন</string>
+
+    <!-- Snooze Options -->
+    <string name="snooze_later_today">আজ পরে (৩ ঘণ্টা পর)</string>
+    <string name="snooze_tomorrow">আগামীকাল সকালে (সকাল ৯টা)</string>
+    <string name="snooze_this_weekend">এই সাপ্তাহিক ছুটিতে</string>
+    <string name="snooze_next_week">পরের সপ্তাহে</string>
+
+    <!-- Item Details -->
+    <string name="item_original_content">মূল তথ্য</string>
+    <string name="item_ai_explanation">লাইফভল্ট কেন এটি চিহ্নিত করেছে</string>
+    <string name="item_reminder_scheduled">রিমাইন্ডার নির্ধারিত</string>
+    <string name="item_due_date">শেষ সময়সীমা</string>
+    <string name="item_amount">পরিমাণ</string>
+    <string name="item_category">বিভাগ</string>
+    <string name="item_priority">অগ্রাধিকার</string>
+    <string name="item_status">অবস্থা</string>
+    <string name="action_mark_complete">সম্পন্ন চিহ্নিত করুন</string>
+    <string name="action_mark_incomplete">অসম্পন্ন রাখুন</string>
+    <string name="action_share_result">ফলাফল শেয়ার করুন</string>
+    <string name="action_archive">আর্কাইভ করুন</string>
+    <string name="action_delete">মুছে ফেলুন</string>
+
+    <!-- Assistant -->
+    <string name="assistant_title">লাইফভল্টকে জিজ্ঞাসা করুন</string>
+    <string name="assistant_hint">আপনার ডেডলাইন, বিল বা ওয়ারেন্টি সম্পর্কে জানুন…</string>
+    <string name="assistant_chip_tomorrow">আগামীকাল আমার কী কী কাজ আছে?</string>
+    <string name="assistant_chip_bills">কোন কোন বিল পরিশোধ বাকি?</string>
+    <string name="assistant_chip_warranties">আমার ওয়ারেন্টি কবে শেষ হবে?</string>
+
+    <!-- Empty States -->
+    <string name="empty_home_title">আপনার সব কাজ শেষ 🎉</string>
+    <string name="empty_home_desc">গুরুত্বপূর্ণ কিছু শেয়ার করুন, লাইফভল্ট স্বয়ংক্রিয়ভাবে সংগঠিত করবে।</string>
+    <string name="empty_inbox_title">নতুন কিছু নেই</string>
+    <string name="empty_inbox_desc">ক্যাপচার করা তথ্য আপনার পর্যালোচনার জন্য এখানে আসবে।</string>
+    <string name="empty_calendar_title">কোনো কাজ নির্ধারিত নেই</string>
+    <string name="empty_calendar_desc">এই তারিখে কোনো কাজ বা বিল বাকি নেই।</string>
+    <string name="empty_vault_title">আপনার ভল্ট খালি</string>
+    <string name="empty_vault_desc">সংগঠিত রেকর্ড, রসিদ এবং ওয়ারেন্টি এখানে সংরক্ষিত থাকবে।</string>
+
+    <!-- Settings -->
+    <string name="settings_title">সেটিংস</string>
+    <string name="settings_section_notifications">বিজ্ঞপ্তি</string>
+    <string name="settings_enable_notifications">রিমাইন্ডার চালু রাখুন</string>
+    <string name="settings_section_appearance">চেহারা</string>
+    <string name="settings_theme_system">সিস্টেম ডিফল্ট</string>
+    <string name="settings_theme_light">লাইট মোড</string>
+    <string name="settings_theme_dark">ডার্ক মোড</string>
+    <string name="settings_section_language">ভাষা</string>
+    <string name="settings_lang_english">English</string>
+    <string name="settings_lang_bengali">বাংলা</string>
+    <string name="settings_section_data">তথ্য ও গোপনীয়তা</string>
+    <string name="settings_export_json">তথ্য এক্সপোর্ট করুন (JSON)</string>
+    <string name="settings_delete_all">সব তথ্য মুছে ফেলুন</string>
+    <string name="settings_delete_confirm_title">সমস্ত তথ্য মুছে ফেলতে চান?</string>
+    <string name="settings_delete_confirm_desc">এই কাজটি আর ফিরিয়ে আনা যাবে না। সব সংরক্ষিত তথ্য ও রিমাইন্ডার স্থায়ীভাবে মুছে যাবে।</string>
+    <string name="settings_about">লাইফভল্ট সম্পর্কে</string>
+    <string name="settings_version">সংস্করণ ১.০</string>
+
+    <!-- Notifications -->
+    <string name="notification_channel_name">লাইফভল্ট রিমাইন্ডার</string>
+    <string name="notification_channel_desc">বিল, কাজ এবং সময়সীমার বিজ্ঞপ্তি</string>
+</resources>

@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+
+    <!-- Outer Rounded Hexagonal / Shield Vault Structure -->
+    <path
+        android:pathData="M48,6 C64,6 82,14 86,28 C89,39 88,60 76,78 C68,90 54,94 48,94 C42,94 28,90 20,78 C8,60 7,39 10,28 C14,14 32,6 48,6 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="48"
+                android:startY="6"
+                android:endX="48"
+                android:endY="94"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#2563EB" />
+                <item android:offset="1.0" android:color="#1E1B4B" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Inner Protective Vault Chamber (Deep contrast) -->
+    <path
+        android:pathData="M48,16 C60,16 74,22 77,34 C79,43 78,59 68,72 C62,80 52,84 48,84 C44,84 34,80 28,72 C18,59 17,43 19,34 C22,22 36,16 48,16 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="48"
+                android:startY="16"
+                android:endX="48"
+                android:endY="84"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#0F172A" />
+                <item android:offset="1.0" android:color="#0B0F19" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Central Intelligent Memory Core (Glowing Amber Spark / Diamond Key) -->
+    <path
+        android:pathData="M48,30 L59,48 L48,66 L37,48 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="37"
+                android:startY="30"
+                android:endX="59"
+                android:endY="66"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FBBF24" />
+                <item android:offset="0.5" android:color="#F59E0B" />
+                <item android:offset="1.0" android:color="#D97706" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Inner Core Spark Accent -->
+    <path
+        android:pathData="M48,38 L54,48 L48,58 L42,48 Z"
+        android:fillColor="#FEF3C7" />
+
+    <!-- Information / Neural Connection Nodes -->
+    <path
+        android:pathData="M48,22 L48,26 M48,70 L48,74 M26,48 L30,48 M66,48 L70,48"
+        android:strokeColor="#38BDF8"
+        android:strokeWidth="3"
+        android:strokeLineCap="round" />
+
+    <!-- Corner Trust Bevels -->
+    <path
+        android:pathData="M34,34 L38,38 M58,38 L62,34 M34,62 L38,58 M58,58 L62,62"
+        android:strokeColor="#60A5FA"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round" />
+</vector>

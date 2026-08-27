@@ -1,0 +1,164 @@
+<resources>
+    <string name="app_name">LifeVault</string>
+    <string name="tagline">Share anything important. Never forget again.</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_inbox">Inbox</string>
+    <string name="nav_calendar">Calendar</string>
+    <string name="nav_vault">Vault</string>
+    <string name="nav_capture">Capture</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Greetings & Summaries -->
+    <string name="greeting_morning">Good morning 👋</string>
+    <string name="greeting_afternoon">Good afternoon 👋</string>
+    <string name="greeting_evening">Good evening 👋</string>
+    <string name="summary_all_caught_up">You\'re all caught up 🎉</string>
+    <string name="summary_needs_attention">%1$d thing(s) need your attention</string>
+
+    <!-- Home Sections -->
+    <string name="section_needs_attention">Needs Attention</string>
+    <string name="section_coming_up">Coming Up</string>
+    <string name="section_completed">Completed</string>
+    <string name="action_done">Done</string>
+    <string name="action_snooze">Snooze</string>
+    <string name="action_undo">Undo</string>
+
+    <!-- Capture -->
+    <string name="capture_title">Capture</string>
+    <string name="capture_text">Text</string>
+    <string name="capture_image">Image</string>
+    <string name="capture_camera">Camera</string>
+    <string name="capture_document">Document</string>
+    <string name="capture_link">Link</string>
+    <string name="capture_voice">Voice</string>
+    <string name="capture_text_hint">Paste or type anything (e.g. \"Electricity bill ৳1,850 due Sep 2\")...</string>
+    <string name="capture_analyze">Understand with AI</string>
+    <string name="capture_voice_listening">Listening… Speak clearly</string>
+    <string name="capture_voice_tap_to_start">Tap to record voice</string>
+
+    <!-- Analysis States -->
+    <string name="analyzing_title">Understanding your information…</string>
+    <string name="analyzing_stage_reading">Reading content…</string>
+    <string name="analyzing_stage_dates">Finding dates and amounts…</string>
+    <string name="analyzing_stage_organizing">Organizing into actionable records…</string>
+
+    <!-- Confirmation Dialog -->
+    <string name="confirm_dialog_title">Possible information found</string>
+    <string name="confirm_dialog_subtitle">Does this look right?</string>
+    <string name="confirm_save_btn">Confirm &amp; Save</string>
+    <string name="confirm_edit_btn">Edit Details</string>
+    <string name="confirm_discard_btn">Discard</string>
+    <string name="confidence_high">Looks clear</string>
+    <string name="confidence_medium">Please review</string>
+    <string name="confidence_low">I\'m not sure</string>
+    <string name="duplicate_warning">Looks like you already saved this.</string>
+    <string name="action_confirm">Confirm</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_dismiss">Dismiss</string>
+    <string name="action_save_anyway">Save anyway</string>
+    <string name="action_open_existing">Open existing</string>
+
+    <!-- Inbox -->
+    <string name="inbox_subtitle">Review &amp; triage newly detected items</string>
+    <string name="inbox_empty_title">Inbox is clear</string>
+    <string name="inbox_empty_desc">Captured items waiting for your review will appear here.</string>
+
+    <!-- Calendar -->
+    <string name="calendar_empty_day">No items for this date</string>
+
+    <!-- Types -->
+    <string name="type_task">Task</string>
+    <string name="type_deadline">Deadline</string>
+    <string name="type_appointment">Appointment</string>
+    <string name="type_payment">Payment</string>
+    <string name="type_subscription">Subscription</string>
+    <string name="type_return">Return</string>
+    <string name="type_warranty">Warranty</string>
+    <string name="type_delivery">Delivery</string>
+    <string name="type_event">Event</string>
+    <string name="type_reminder">Reminder</string>
+    <string name="type_important">Important Info</string>
+
+    <!-- Categories -->
+    <string name="category_education">Education</string>
+    <string name="category_finance">Finance</string>
+    <string name="category_shopping">Shopping</string>
+    <string name="category_health">Health</string>
+    <string name="category_travel">Travel</string>
+    <string name="category_work">Work</string>
+    <string name="category_home">Home</string>
+    <string name="category_technology">Technology</string>
+    <string name="category_events">Events</string>
+    <string name="category_documents">Documents</string>
+    <string name="category_delivery">Delivery</string>
+    <string name="category_warranty">Warranty</string>
+    <string name="category_general">General</string>
+
+    <!-- Priorities -->
+    <string name="priority_high">High</string>
+    <string name="priority_medium">Medium</string>
+    <string name="priority_low">Low</string>
+
+    <!-- Snooze Options -->
+    <string name="snooze_later_today">Later today (3 hours)</string>
+    <string name="snooze_tomorrow">Tomorrow morning (9 AM)</string>
+    <string name="snooze_this_weekend">This weekend</string>
+    <string name="snooze_next_week">Next week</string>
+
+    <!-- Item Details -->
+    <string name="item_original_content">Original Information</string>
+    <string name="item_ai_explanation">Why LifeVault detected this</string>
+    <string name="item_reminder_scheduled">Reminder Scheduled</string>
+    <string name="item_due_date">Due Date</string>
+    <string name="item_amount">Amount</string>
+    <string name="item_category">Category</string>
+    <string name="item_priority">Priority</string>
+    <string name="item_status">Status</string>
+    <string name="action_mark_complete">Mark Complete</string>
+    <string name="action_mark_incomplete">Mark Incomplete</string>
+    <string name="action_share_result">Share Result</string>
+    <string name="action_archive">Archive</string>
+    <string name="action_delete">Delete</string>
+
+    <!-- Assistant -->
+    <string name="assistant_title">Ask LifeVault</string>
+    <string name="assistant_hint">Ask about your deadlines, bills, warranties…</string>
+    <string name="assistant_chip_tomorrow">What do I need to do tomorrow?</string>
+    <string name="assistant_chip_bills">What payments are due?</string>
+    <string name="assistant_chip_warranties">When do my warranties expire?</string>
+
+    <!-- Empty States -->
+    <string name="empty_home_title">You\'re all caught up 🎉</string>
+    <string name="empty_home_desc">Share anything important to let LifeVault organize it for you.</string>
+    <string name="empty_inbox_title">Nothing new yet</string>
+    <string name="empty_inbox_desc">Captured items and discoveries will appear here for your review.</string>
+    <string name="empty_calendar_title">Nothing scheduled</string>
+    <string name="empty_calendar_desc">No tasks, payments, or deadlines on this date.</string>
+    <string name="empty_vault_title">Your vault is empty</string>
+    <string name="empty_vault_desc">Organized records, receipts, and warranties will be stored safely here.</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_section_notifications">Notifications</string>
+    <string name="settings_enable_notifications">Enable Reminders</string>
+    <string name="settings_section_appearance">Appearance</string>
+    <string name="settings_theme_system">System Default</string>
+    <string name="settings_theme_light">Light Mode</string>
+    <string name="settings_theme_dark">Dark Mode</string>
+    <string name="settings_section_language">Language</string>
+    <string name="settings_lang_english">English</string>
+    <string name="settings_lang_bengali">বাংলা (Bengali)</string>
+    <string name="settings_section_data">Data &amp; Privacy</string>
+    <string name="settings_export_json">Export Data (JSON)</string>
+    <string name="settings_delete_all">Delete All Data</string>
+    <string name="settings_delete_confirm_title">Delete all LifeVault data?</string>
+    <string name="settings_delete_confirm_desc">This action cannot be undone. All saved items and reminders will be erased permanently.</string>
+    <string name="settings_about">About LifeVault</string>
+    <string name="settings_version">Version 1.0</string>
+
+    <!-- Notifications -->
+    <string name="notification_channel_name">LifeVault Reminders</string>
+    <string name="notification_channel_desc">Reminders for deadlines, payments, and tasks</string>
+</resources>
