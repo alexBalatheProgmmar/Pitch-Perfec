@@ -93,11 +93,11 @@ object AIResultValidator {
             val hasPrice = finalAmount != null || containsCurrencySymbol(sourceText)
             val hasReceiptSignals = containsReceiptSignals(normalizedSource)
             if (!hasPrice && !hasReceiptSignals) {
-                notes.add("Insufficient evidence for RECEIPT/PURCHASE; downgrading to GENERAL_INFORMATION.")
-                finalContentType = ContentType.GENERAL_INFORMATION.name
-                finalActionability = Actionability.INFORMATIONAL.name
+                notes.add("Insufficient evidence for RECEIPT/PURCHASE; reclassifying to UNKNOWN.")
+                finalContentType = ContentType.UNKNOWN.name
+                finalActionability = Actionability.UNCERTAIN.name
                 finalType = ItemType.DOCUMENT.name
-                finalCategory = ItemCategory.DOCUMENTS.name
+                finalCategory = ItemCategory.GENERAL.name
             }
         }
 
@@ -105,8 +105,8 @@ object AIResultValidator {
         if (finalContentType == ContentType.SUBSCRIPTION.name) {
             val hasSubSignals = containsSubscriptionSignals(normalizedSource)
             if (!hasSubSignals) {
-                notes.add("Insufficient evidence for SUBSCRIPTION; reclassifying to GENERAL_INFORMATION.")
-                finalContentType = ContentType.GENERAL_INFORMATION.name
+                notes.add("Insufficient evidence for SUBSCRIPTION; reclassifying to UNKNOWN.")
+                finalContentType = ContentType.UNKNOWN.name
                 finalActionability = Actionability.INFORMATIONAL.name
                 finalType = ItemType.NOTE.name
                 finalCategory = ItemCategory.GENERAL.name
@@ -121,11 +121,12 @@ object AIResultValidator {
 
             if (isDefinitionalOrEducational && !isExplicitAction) {
                 notes.add("Source is educational/definitional; reclassifying actionable claim to INFORMATIONAL.")
-                finalContentType = if (finalContentType == ContentType.TASK.name || finalContentType == ContentType.DEADLINE.name) {
-                    ContentType.EDUCATIONAL_CONTENT.name
+                finalContentType = if (finalContentType == ContentType.TASK.name || finalContentType == ContentType.DEADLINE.name || finalContentType == ContentType.UNKNOWN.name) {
+                    ContentType.EDUCATIONAL_DOCUMENT.name
                 } else finalContentType
                 finalActionability = Actionability.INFORMATIONAL.name
-                finalType = ItemType.NOTE.name
+                finalType = ItemType.DOCUMENT.name
+                finalCategory = ItemCategory.EDUCATION.name
                 finalAction = ""
                 finalEvidence = null
             } else if (!isExplicitAction && finalDate == null && finalAmount == null) {
@@ -178,7 +179,7 @@ object AIResultValidator {
             contentTypeConfidence = finalContentTypeConfidence,
             actionabilityConfidence = finalActionabilityConfidence,
             extractionConfidence = finalExtractionConfidence,
-            title = if (raw.title.isNotBlank()) raw.title else "Untitled Note",
+            title = if (raw.title.isNotBlank()) raw.title else "Untitled Record",
             summary = raw.summary.ifBlank { raw.title },
             description = raw.description,
             type = finalType,
@@ -187,7 +188,31 @@ object AIResultValidator {
             date = finalDate,
             time = finalTime,
             amount = finalAmount,
+            amountDue = raw.amountDue ?: finalAmount,
             currency = finalCurrency,
+            invoiceNumber = raw.invoiceNumber,
+            customer = raw.customer,
+            issueDate = raw.issueDate,
+            billingPeriod = raw.billingPeriod,
+            subtotal = raw.subtotal,
+            tax = raw.tax,
+            discount = raw.discount,
+            amountPaid = raw.amountPaid,
+            balance = raw.balance,
+            paymentStatus = raw.paymentStatus,
+            topic = raw.topic,
+            subject = raw.subject,
+            authors = raw.authors,
+            abstractSnippet = raw.abstractSnippet,
+            keyFindings = raw.keyFindings,
+            keyConcepts = raw.keyConcepts,
+            fileName = raw.fileName,
+            fileSize = raw.fileSize,
+            pageCount = raw.pageCount,
+            sourcePageEvidence = raw.sourcePageEvidence,
+            ocrConfidence = raw.ocrConfidence,
+            isScannedPdf = raw.isScannedPdf,
+            contentHash = raw.contentHash,
             merchant = finalMerchant,
             product = finalProduct,
             subscription = finalSubscription,

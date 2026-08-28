@@ -16,7 +16,7 @@ import com.example.data.model.UserItem
         CardItem::class,
         PaymentRecord::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class LifeVaultDatabase : RoomDatabase() {

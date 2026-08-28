@@ -76,12 +76,123 @@ object RuleBasedFallbackExtractor {
             ).validatedResult
         }
 
-        // 2. Educational / Academic / Definition Content (Check early before bills/tasks)
-        if (isEducationalOrDefinitional(lower, cleanText)) {
+        // 2. Unidentifiable / Blurry / Random Content
+        if (isBlurryOrUnidentifiable(lower)) {
+            return AIResultValidator.validate(
+                AIAnalysisResult(
+                    contentType = ContentType.UNKNOWN.name,
+                    actionability = Actionability.INFORMATIONAL.name,
+                    contentTypeConfidence = 0.50f,
+                    actionabilityConfidence = 0.90f,
+                    extractionConfidence = 0.0f,
+                    title = "Unidentified Image",
+                    summary = "I couldn't identify this content or read clear details.",
+                    description = cleanText,
+                    type = ItemType.NOTE.name,
+                    category = ItemCategory.GENERAL.name,
+                    action = "",
+                    priority = ItemPriority.LOW.name,
+                    confidence = 0.50f,
+                    evidence = null,
+                    reason = "Image/content is unreadable, blurry, or lacks clear extractable information.",
+                    explanation = "Unidentified content.",
+                    isActionable = false,
+                    isUncertain = true
+                ),
+                cleanText
+            ).validatedResult
+        }
+
+        // 3. Visual Photographs (Pets, Nature, Landscapes, People, Scenes)
+        if (isPhotographOrVisualScene(lower)) {
+            val photoTitle = extractPhotographTitle(lower, cleanText)
+            return AIResultValidator.validate(
+                AIAnalysisResult(
+                    contentType = ContentType.PHOTOGRAPH.name,
+                    actionability = Actionability.INFORMATIONAL.name,
+                    contentTypeConfidence = 0.96f,
+                    actionabilityConfidence = 0.98f,
+                    extractionConfidence = 0.0f,
+                    title = photoTitle,
+                    summary = "Photograph: $photoTitle",
+                    description = cleanText,
+                    type = ItemType.NOTE.name,
+                    category = ItemCategory.GENERAL.name,
+                    action = "",
+                    priority = ItemPriority.LOW.name,
+                    confidence = 0.95f,
+                    evidence = null,
+                    reason = "Visual photograph with no pending task, deadline, or financial obligation.",
+                    explanation = "Saved photograph.",
+                    isActionable = false,
+                    isUncertain = false
+                ),
+                cleanText
+            ).validatedResult
+        }
+
+        // 4. Product Photographs / Gadgets / Merchandise (Non-Receipt)
+        if (isProductPhoto(lower)) {
+            val productTitle = extractProductPhotoTitle(cleanText, lower)
+            return AIResultValidator.validate(
+                AIAnalysisResult(
+                    contentType = ContentType.PRODUCT_IMAGE.name,
+                    actionability = Actionability.INFORMATIONAL.name,
+                    contentTypeConfidence = 0.94f,
+                    actionabilityConfidence = 0.98f,
+                    extractionConfidence = 0.0f,
+                    title = productTitle,
+                    summary = "Product image: $productTitle",
+                    description = cleanText,
+                    type = ItemType.NOTE.name,
+                    category = ItemCategory.SHOPPING.name,
+                    product = productTitle,
+                    action = "",
+                    priority = ItemPriority.LOW.name,
+                    confidence = 0.94f,
+                    evidence = null,
+                    reason = "Product photograph without transaction receipt or pending obligation.",
+                    explanation = "Saved product photo.",
+                    isActionable = false,
+                    isUncertain = false
+                ),
+                cleanText
+            ).validatedResult
+        }
+
+        // 5. Chat / Instant Messaging Screenshots
+        if (isChatScreenshot(lower)) {
+            return AIResultValidator.validate(
+                AIAnalysisResult(
+                    contentType = ContentType.CHAT_SCREENSHOT.name,
+                    actionability = Actionability.INFORMATIONAL.name,
+                    contentTypeConfidence = 0.95f,
+                    actionabilityConfidence = 0.95f,
+                    extractionConfidence = 0.0f,
+                    title = "Chat Conversation",
+                    summary = "Instant messaging chat conversation record.",
+                    description = cleanText,
+                    type = ItemType.NOTE.name,
+                    category = ItemCategory.GENERAL.name,
+                    action = "",
+                    priority = ItemPriority.LOW.name,
+                    confidence = 0.95f,
+                    evidence = null,
+                    reason = "Messaging screenshot captured for information.",
+                    explanation = "Saved chat conversation.",
+                    isActionable = false,
+                    isUncertain = false
+                ),
+                cleanText
+            ).validatedResult
+        }
+
+        // 6. Educational / Academic / Math / Definition Content (INFORMATIONAL)
+        if (isEducationalOrDefinitional(lower, cleanText) || isMathOrPhysics(lower)) {
             val title = extractTitleFromEducational(lines, cleanText)
             return AIResultValidator.validate(
                 AIAnalysisResult(
-                    contentType = ContentType.EDUCATIONAL_CONTENT.name,
+                    contentType = ContentType.EDUCATIONAL_PAGE.name,
                     actionability = Actionability.INFORMATIONAL.name,
                     contentTypeConfidence = 0.96f,
                     actionabilityConfidence = 0.98f,
@@ -167,6 +278,56 @@ object RuleBasedFallbackExtractor {
         // Extract Monetary Amount (with special handling for Total Due vs Previous Balance)
         val (extractedAmount, extractedCurrency) = extractBillFinancials(cleanText, lower)
 
+        // 4b. Commercial Invoice Detection (ACTIONABLE / PAYMENT PENDING)
+        if (isCommercialInvoice(lower, cleanText)) {
+            val invNum = extractInvoiceNumber(cleanText)
+            val customer = extractCustomerName(cleanText)
+            val provider = extractInvoiceProvider(cleanText, lines)
+            val amountDue = extractedAmount
+            val isPaid = lower.contains("status: paid") || lower.contains("paid in full")
+
+            val title = if (provider != null) "$provider Invoice" else if (invNum != null) "Invoice $invNum" else "Commercial Invoice"
+            val actionText = if (!isPaid && amountDue != null) "Pay invoice ${extractedCurrency ?: "৳"}${amountDue.toInt()}" else if (!isPaid) "Review invoice" else ""
+
+            val evidence = cleanText.lines().firstOrNull { l ->
+                val ll = l.lowercase(Locale.ROOT)
+                ll.contains("invoice") || ll.contains("total due") || ll.contains("amount due")
+            } ?: cleanText.take(100)
+
+            return AIResultValidator.validate(
+                AIAnalysisResult(
+                    contentType = ContentType.INVOICE.name,
+                    actionability = if (isPaid) Actionability.INFORMATIONAL.name else Actionability.ACTIONABLE.name,
+                    contentTypeConfidence = 0.96f,
+                    actionabilityConfidence = 0.95f,
+                    extractionConfidence = 0.94f,
+                    title = title,
+                    summary = "Invoice for $title with amount ${extractedCurrency ?: "৳"}${amountDue?.toInt() ?: ""}" + if (extractedDate != null) " due $extractedDate" else "",
+                    description = cleanText,
+                    type = ItemType.DOCUMENT.name,
+                    category = ItemCategory.FINANCE.name,
+                    action = actionText,
+                    date = extractedDate,
+                    time = extractedTime,
+                    amount = amountDue,
+                    amountDue = amountDue,
+                    currency = extractedCurrency,
+                    invoiceNumber = invNum,
+                    customer = customer,
+                    organization = provider,
+                    paymentStatus = if (isPaid) "PAID" else "UNPAID",
+                    priority = if (isPaid) ItemPriority.LOW.name else ItemPriority.HIGH.name,
+                    confidence = 0.95f,
+                    evidence = evidence,
+                    reason = "Explicit commercial invoice with invoice number and amount due.",
+                    explanation = "Identified invoice from ${provider ?: "vendor"}.",
+                    isActionable = !isPaid,
+                    isUncertain = false
+                ),
+                cleanText
+            ).validatedResult
+        }
+
         // 5. Active Bill / Utility Payment Detection (ACTIONABLE)
         if (isBillPaymentObligation(lower, extractedAmount, extractedDate)) {
             val detectedBillType = detectBillType(lower)
@@ -199,9 +360,12 @@ object RuleBasedFallbackExtractor {
                     date = extractedDate,
                     time = extractedTime,
                     amount = extractedAmount,
+                    amountDue = extractedAmount,
                     currency = extractedCurrency,
                     billType = detectedBillType.name,
                     billProvider = provider,
+                    organization = provider,
+                    paymentStatus = "UNPAID",
                     priority = ItemPriority.HIGH.name,
                     confidence = 0.95f,
                     evidence = evidence,
@@ -369,19 +533,23 @@ object RuleBasedFallbackExtractor {
             ).validatedResult
         }
 
-        // 10. Default Fallback: GENERAL_INFORMATION / INFORMATIONAL
+        // 10. Genuinely General Reference Document vs UNKNOWN Fallback
+        val isGeneralWiki = lower.contains("wikipedia") || lower.contains("encyclopedia") || lower.contains("the capital of") || lower.contains("history of")
+        val defaultContentType = if (isGeneralWiki) ContentType.GENERAL_INFORMATION.name else ContentType.UNKNOWN.name
+        val defaultActionability = if (isGeneralWiki) Actionability.INFORMATIONAL.name else Actionability.UNCERTAIN.name
         val defaultTitle = firstLine.take(50)
+
         return AIResultValidator.validate(
             AIAnalysisResult(
-                contentType = ContentType.GENERAL_INFORMATION.name,
-                actionability = Actionability.INFORMATIONAL.name,
-                contentTypeConfidence = 0.85f,
-                actionabilityConfidence = 0.90f,
+                contentType = defaultContentType,
+                actionability = defaultActionability,
+                contentTypeConfidence = if (isGeneralWiki) 0.85f else 0.40f,
+                actionabilityConfidence = if (isGeneralWiki) 0.90f else 0.50f,
                 extractionConfidence = 0.0f,
                 title = defaultTitle,
                 summary = cleanText.take(120),
                 description = cleanText,
-                type = ItemType.NOTE.name,
+                type = if (isGeneralWiki) ItemType.NOTE.name else ItemType.DOCUMENT.name,
                 category = ItemCategory.GENERAL.name,
                 action = "",
                 date = extractedDate,
@@ -389,12 +557,12 @@ object RuleBasedFallbackExtractor {
                 amount = extractedAmount,
                 currency = extractedCurrency,
                 priority = ItemPriority.LOW.name,
-                confidence = 0.85f,
+                confidence = if (isGeneralWiki) 0.85f else 0.40f,
                 evidence = null,
-                reason = "No explicit actionable task, bill, or deadline detected.",
-                explanation = "This is informational content. No action needed.",
+                reason = if (isGeneralWiki) "General reference knowledge content." else "No explicit actionable task, bill, or recognizable document pattern detected.",
+                explanation = if (isGeneralWiki) "This is informational reference content." else "LifeVault is unable to confidently identify the document type.",
                 isActionable = false,
-                isUncertain = false
+                isUncertain = !isGeneralWiki
             ),
             cleanText
         ).validatedResult
@@ -551,11 +719,86 @@ object RuleBasedFallbackExtractor {
         }
     }
 
+    private fun isBlurryOrUnidentifiable(lower: String): Boolean {
+        val blurryKeywords = listOf("blurry", "unfocused", "unreadable", "noise", "blank image", "cannot read", "unclear", "dark image", "random pixels", "empty image")
+        return blurryKeywords.any { lower.contains(it) }
+    }
+
+    private fun isPhotographOrVisualScene(lower: String): Boolean {
+        val visualKeywords = listOf(
+            "dog", "puppy", "golden retriever", "retriever", "german shepherd", "husky", "labrador", "cat", "kitten", "pet",
+            "landscape", "mountain", "mountains", "sunset", "sunrise", "beach", "ocean", "sea", "forest", "scenery", "waterfall",
+            "person", "portrait", "selfie", "man smiling", "woman smiling", "boy", "girl", "friends photo", "family photo",
+            "city skyline", "skyline", "nature", "trees", "lake", "river"
+        )
+        return visualKeywords.any { lower.contains(it) } && !lower.contains("receipt") && !lower.contains("tax invoice") && !lower.contains("subtotal")
+    }
+
+    private fun extractPhotographTitle(lower: String, clean: String): String {
+        return when {
+            lower.contains("golden retriever") -> "Golden Retriever"
+            lower.contains("german shepherd") -> "German Shepherd"
+            lower.contains("husky") -> "Husky Dog"
+            lower.contains("puppy") -> "Cute Puppy"
+            lower.contains("dog") -> "Dog Photograph"
+            lower.contains("cat") || lower.contains("kitten") -> "Cat Photograph"
+            lower.contains("mountain") -> "Mountain Landscape"
+            lower.contains("sunset") -> "Sunset View"
+            lower.contains("sunrise") -> "Sunrise View"
+            lower.contains("beach") || lower.contains("ocean") -> "Ocean Beach Landscape"
+            lower.contains("forest") -> "Forest Scenery"
+            lower.contains("selfie") -> "Selfie Photo"
+            lower.contains("portrait") -> "Portrait Photo"
+            lower.contains("person") -> "Person Photograph"
+            else -> "Photograph"
+        }
+    }
+
+    private fun isProductPhoto(lower: String): Boolean {
+        val productWords = listOf(
+            "product photo", "product image", "sneakers", "nike", "adidas", "headphones",
+            "sony", "iphone", "pixel", "samsung galaxy", "macbook", "camera lens", "watch",
+            "coffee maker", "gadget", "smart watch", "samsung ssd", "ssd"
+        )
+        val hasReceiptSigns = lower.contains("subtotal") || lower.contains("tax") || lower.contains("cashier") || lower.contains("pos terminal") || lower.contains("receipt")
+        return productWords.any { lower.contains(it) } && !hasReceiptSigns
+    }
+
+    private fun extractProductPhotoTitle(cleanText: String, lower: String): String {
+        return when {
+            lower.contains("samsung ssd") -> "Samsung SSD"
+            lower.contains("ssd") -> "SSD Storage Drive"
+            lower.contains("sneakers") || lower.contains("nike") -> "Nike Sneakers"
+            lower.contains("headphones") || lower.contains("sony") -> "Sony Headphones"
+            lower.contains("iphone") -> "Apple iPhone"
+            lower.contains("pixel") -> "Google Pixel"
+            lower.contains("macbook") -> "Apple MacBook"
+            lower.contains("watch") -> "Smart Watch"
+            else -> "Product Photo"
+        }
+    }
+
+    private fun isChatScreenshot(lower: String): Boolean {
+        val chatWords = listOf(
+            "chat screenshot", "whatsapp", "telegram", "messenger", "imessage", "conversation",
+            "typing...", "online", "delivered", "read at", "yesterday at", "pm\n", "am\n"
+        )
+        return chatWords.any { lower.contains(it) } && !lower.contains("receipt")
+    }
+
+    private fun isMathOrPhysics(lower: String): Boolean {
+        val mathWords = listOf(
+            "math", "mathematics", "calculus", "algebra", "integral", "derivative", "equation",
+            "solve for x", "quadratic formula", "physics problem", "velocity", "acceleration", "f = ma"
+        )
+        return mathWords.any { lower.contains(it) } && !lower.contains("receipt")
+    }
+
     private fun isReceiptOrPurchase(lower: String, amount: Double?, currency: String?): Boolean {
-        val purchaseWords = listOf("receipt", "invoice", "purchased", "purchase", "order #", "store #", "ssd", "samsung ssd", "pos terminal")
-        val hasPurchaseWord = purchaseWords.any { lower.contains(it) }
+        val explicitReceiptTokens = listOf("receipt", "store #", "cashier", "pos terminal", "subtotal", "vat #", "sales slip", "tax invoice")
+        val hasExplicitToken = explicitReceiptTokens.any { lower.contains(it) }
         val isWordCount = lower.contains("words") || lower.contains("total words") || lower.contains("pages")
-        return hasPurchaseWord && !isWordCount && (amount != null || currency != null || lower.contains("receipt"))
+        return hasExplicitToken && !isWordCount && (amount != null || currency != null || lower.contains("receipt"))
     }
 
     private fun extractProductName(cleanText: String, lower: String): String? {
@@ -687,5 +930,43 @@ object RuleBasedFallbackExtractor {
             return "${timeMatcher.group(1)} ${timeMatcher.group(2)?.uppercase(Locale.ROOT)}"
         }
         return null
+    }
+
+    private fun isCommercialInvoice(lower: String, text: String): Boolean {
+        val hasInvoiceToken = lower.contains("invoice") || lower.contains("inv-") || lower.contains("inv #") || lower.contains("tax invoice")
+        val hasFinancials = lower.contains("subtotal") || lower.contains("total amount due") || lower.contains("balance due") || lower.contains("bill to") || lower.contains("due date") || lower.contains("amount due")
+        val isNotUtility = !lower.contains("kwh") && !lower.contains("meter reading") && !lower.contains("desco") && !lower.contains("dpdc")
+        return hasInvoiceToken && (hasFinancials || isNotUtility)
+    }
+
+    private fun extractInvoiceNumber(text: String): String? {
+        val pattern = Pattern.compile("(?i)(?:invoice|inv)[\\s#.:\\-_]+([A-Z0-9\\-_]{3,})")
+        val matcher = pattern.matcher(text)
+        if (matcher.find()) {
+            return matcher.group(1)?.trim()
+        }
+        return null
+    }
+
+    private fun extractCustomerName(text: String): String? {
+        val pattern = Pattern.compile("(?i)(?:bill to|customer|client|sold to)[\\s:]+([A-Za-z0-9 .,'-]+)")
+        val matcher = pattern.matcher(text)
+        if (matcher.find()) {
+            return matcher.group(1)?.trim()?.lines()?.firstOrNull()?.take(35)
+        }
+        return null
+    }
+
+    private fun extractInvoiceProvider(text: String, lines: List<String>): String? {
+        val firstLine = lines.firstOrNull()
+        if (!firstLine.isNullOrBlank() && !firstLine.lowercase(Locale.ROOT).contains("invoice") && firstLine.length <= 40) {
+            return firstLine
+        }
+        val fromPattern = Pattern.compile("(?i)(?:from|vendor|provider|biller)[\\s:]+([A-Za-z0-9 .,'-]+)")
+        val matcher = fromPattern.matcher(text)
+        if (matcher.find()) {
+            return matcher.group(1)?.trim()?.lines()?.firstOrNull()?.take(40)
+        }
+        return lines.take(2).firstOrNull { it.length <= 40 && !it.contains(":") }
     }
 }

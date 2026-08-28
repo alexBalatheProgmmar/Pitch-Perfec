@@ -90,13 +90,15 @@ enum class CaptureMode(val label: String, val icon: ImageVector) {
 fun CaptureBottomSheet(
     onDismiss: () -> Unit,
     onAnalyzeText: (String, String) -> Unit,
-    onAnalyzeImage: (Bitmap, String?) -> Unit
+    onAnalyzeImage: (Bitmap, String?) -> Unit,
+    onAnalyzePdf: ((Uri, String) -> Unit)? = null
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val context = LocalContext.current
     var selectedMode by remember { mutableStateOf(CaptureMode.TEXT) }
     var inputText by remember { mutableStateOf("") }
     var documentFileName by remember { mutableStateOf<String?>(null) }
+    var selectedPdfUri by remember { mutableStateOf<Uri?>(null) }
 
     // Speech Recognizer Launcher
     val speechLauncher = rememberLauncherForActivityResult(
@@ -135,17 +137,26 @@ fun CaptureBottomSheet(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            documentFileName = it.lastPathSegment ?: "Document.pdf"
-            try {
-                val inputStream = context.contentResolver.openInputStream(it)
-                val text = inputStream?.bufferedReader()?.use { reader -> reader.readText() }
-                if (!text.isNullOrBlank()) {
-                    inputText = text.take(3000)
-                } else {
-                    inputText = "Document: $documentFileName"
+            val fileName = it.lastPathSegment ?: "Document.pdf"
+            documentFileName = fileName
+            val mimeType = context.contentResolver.getType(it) ?: ""
+            val isPdf = mimeType.contains("pdf", ignoreCase = true) || fileName.endsWith(".pdf", ignoreCase = true)
+
+            if (isPdf && onAnalyzePdf != null) {
+                selectedPdfUri = it
+                onAnalyzePdf(it, fileName)
+            } else {
+                try {
+                    val inputStream = context.contentResolver.openInputStream(it)
+                    val text = inputStream?.bufferedReader()?.use { reader -> reader.readText() }
+                    if (!text.isNullOrBlank()) {
+                        inputText = text.take(3000)
+                    } else {
+                        inputText = "Document: $fileName"
+                    }
+                } catch (e: Exception) {
+                    inputText = "Document: $fileName"
                 }
-            } catch (e: Exception) {
-                inputText = "Document: $documentFileName"
             }
         }
     }

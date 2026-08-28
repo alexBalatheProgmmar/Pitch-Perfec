@@ -299,6 +299,8 @@ class MainViewModel(
             _uiState.value = _uiState.value.copy(
                 isAnalyzing = true,
                 analysisStage = "Reading content…",
+                pendingConfirmationItem = null,
+                duplicateWarningItem = null,
                 isCaptureSheetOpen = false
             )
 
@@ -318,12 +320,48 @@ class MainViewModel(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
                 isAnalyzing = true,
-                analysisStage = "Reading document/image…",
+                analysisStage = "Classifying image content…",
+                pendingConfirmationItem = null,
+                duplicateWarningItem = null,
                 isCaptureSheetOpen = false
             )
 
             val result = aiService.analyzeImage(bitmap, promptHint)
-            handleAnalysisResult(result, originalContent = promptHint ?: "Image OCR Capture", source = source)
+            handleAnalysisResult(result, originalContent = promptHint ?: "Image Capture", source = source)
+        }
+    }
+
+    fun analyzeAndProcessPdf(
+        context: android.content.Context,
+        uri: android.net.Uri,
+        source: String = "PDF"
+    ) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                isAnalyzing = true,
+                analysisStage = "Extracting document pages and digital text…",
+                pendingConfirmationItem = null,
+                duplicateWarningItem = null,
+                isCaptureSheetOpen = false
+            )
+
+            try {
+                val fileName = uri.lastPathSegment ?: "Document.pdf"
+                val pdfResult = com.example.util.PdfProcessor.processPdf(context, uri, fileName = fileName)
+                _uiState.value = _uiState.value.copy(analysisStage = "Classifying document type and structure…")
+
+                val result = com.example.data.remote.DocumentContentClassifier.classifyAndExtract(
+                    pdfData = pdfResult
+                )
+
+                handleAnalysisResult(result, originalContent = pdfResult.fullText.ifBlank { pdfResult.fileName }, source = source)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isAnalyzing = false,
+                    analysisStage = "",
+                    errorMessage = "Failed to process PDF: ${e.localizedMessage}"
+                )
+            }
         }
     }
 
@@ -349,7 +387,31 @@ class MainViewModel(
             dueTime = result.time,
             dueTimestamp = dueTimestamp,
             amount = result.amount,
+            amountDue = result.amountDue ?: result.amount,
             currency = result.currency,
+            invoiceNumber = result.invoiceNumber,
+            customer = result.customer,
+            issueDate = result.issueDate,
+            billingPeriod = result.billingPeriod,
+            subtotal = result.subtotal,
+            tax = result.tax,
+            discount = result.discount,
+            amountPaid = result.amountPaid,
+            balance = result.balance,
+            paymentStatus = result.paymentStatus,
+            topic = result.topic,
+            subject = result.subject,
+            authors = result.authors,
+            abstractSnippet = result.abstractSnippet,
+            keyFindings = result.keyFindings,
+            keyConcepts = result.keyConcepts,
+            fileName = result.fileName,
+            fileSize = result.fileSize,
+            pageCount = result.pageCount,
+            sourcePageEvidence = result.sourcePageEvidence,
+            ocrConfidence = result.ocrConfidence,
+            isScannedPdf = result.isScannedPdf,
+            contentHash = result.contentHash,
             person = result.person,
             organization = result.organization ?: result.billProvider,
             location = result.location,

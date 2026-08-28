@@ -252,6 +252,115 @@ fun ItemDetailScreen(
                 }
             }
 
+            // Invoice & Financial Breakdown Card
+            if (item.invoiceNumber != null || item.customer != null || item.subtotal != null || item.tax != null || item.issueDate != null) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(22.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(18.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = "🧾 Invoice & Financial Details",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        if (item.invoiceNumber != null) {
+                            Text(
+                                text = "Invoice #: ${item.invoiceNumber}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        if (item.customer != null) {
+                            Text(
+                                text = "Billed to: ${item.customer}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        if (item.issueDate != null) {
+                            Text(
+                                text = "Issue Date: ${item.issueDate}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        if (item.subtotal != null || item.tax != null) {
+                            Text(
+                                text = "Subtotal: ${item.currency ?: ""}${item.subtotal ?: "-"}  •  Tax: ${item.currency ?: ""}${item.tax ?: "-"}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        if (item.amountPaid != null || item.balance != null) {
+                            Text(
+                                text = "Paid: ${item.currency ?: ""}${item.amountPaid ?: "-"}  •  Balance: ${item.currency ?: ""}${item.balance ?: "-"}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Academic / Research / Topic Summary Card
+            if (item.topic != null || item.subject != null || item.authors != null || item.abstractSnippet != null || (item.pageCount != null && item.pageCount > 0)) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(22.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.35f))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(18.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = "📚 Document Summary",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        if (item.topic != null || item.subject != null) {
+                            Text(
+                                text = "Topic: ${item.topic ?: item.subject}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                        }
+                        if (item.authors != null) {
+                            Text(
+                                text = "Authors: ${item.authors}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                        }
+                        if (item.pageCount != null && item.pageCount > 0) {
+                            Text(
+                                text = "Pages: ${item.pageCount} page(s)${if (item.isScannedPdf) " • Scanned OCR" else " • Digital text"}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                        }
+                        if (item.abstractSnippet != null) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = item.abstractSnippet!!,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                        }
+                    }
+                }
+            }
+
             // Warranties / Return windows if present
             if (item.warrantyExpiryDate != null || item.returnWindowDays != null) {
                 Card(

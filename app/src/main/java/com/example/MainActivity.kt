@@ -131,6 +131,16 @@ class MainActivity : ComponentActivity() {
                             viewModel.analyzeAndProcessText("Shared image URI: $imageUri", source = "ShareSheet")
                         }
                     }
+                } else if (intent.type?.contains("pdf", ignoreCase = true) == true) {
+                    val pdfUri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
+                    }
+                    if (pdfUri != null) {
+                        viewModel.analyzeAndProcessPdf(applicationContext, pdfUri, source = "ShareSheet")
+                    }
                 }
             }
         }
@@ -142,6 +152,7 @@ fun LifeVaultApp(
     viewModel: MainViewModel,
     initialItemId: String? = null
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     val navController = rememberNavController()
 
@@ -318,6 +329,9 @@ fun LifeVaultApp(
                         },
                         onAnalyzeImage = { bitmap, prompt ->
                             viewModel.analyzeAndProcessImage(bitmap, prompt)
+                        },
+                        onAnalyzePdf = { uri, _ ->
+                            viewModel.analyzeAndProcessPdf(context, uri, source = "Document")
                         }
                     )
                 }
