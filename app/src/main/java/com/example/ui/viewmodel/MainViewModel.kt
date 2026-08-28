@@ -6,23 +6,27 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.data.local.PreferencesManager
 import com.example.data.model.AIAnalysisResult
+import com.example.data.model.Bill
+import com.example.data.model.BillStatus
+import com.example.data.model.BillType
+import com.example.data.model.CardItem
+import com.example.data.model.ContentType
 import com.example.data.model.ItemCategory
 import com.example.data.model.ItemPriority
 import com.example.data.model.ItemStatus
 import com.example.data.model.ItemType
+import com.example.data.model.PaymentRecord
 import com.example.data.model.ReminderTiming
 import com.example.data.model.UserItem
 import com.example.data.remote.AIService
+import com.example.data.repository.BillRepository
 import com.example.data.repository.ItemRepository
 import com.example.util.DateTimeUtils
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.UUID
 
@@ -35,6 +39,14 @@ data class MainUiState(
     val vaultItems: List<UserItem> = emptyList(),
     val searchResults: List<UserItem> = emptyList(),
     val calendarItems: List<UserItem> = emptyList(),
+    val bills: List<Bill> = emptyList(),
+    val unpaidBills: List<Bill> = emptyList(),
+    val paidBills: List<Bill> = emptyList(),
+    val cards: List<CardItem> = emptyList(),
+    val paymentRecords: List<PaymentRecord> = emptyList(),
+    val totalAmountDue: Double = 0.0,
+    val selectedBillTypeFilter: String = "ALL",
+    val selectedBillTab: Int = 0,
     val selectedCategory: String = "ALL",
     val searchQuery: String = "",
     val selectedCalendarDate: String = DateTimeUtils.getTodayDateString(),
@@ -56,6 +68,7 @@ data class MainUiState(
 
 class MainViewModel(
     private val repository: ItemRepository,
+    private val billRepository: BillRepository,
     private val preferencesManager: PreferencesManager,
     private val aiService: AIService
 ) : ViewModel() {
@@ -64,7 +77,7 @@ class MainViewModel(
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
 
     init {
-        // Collect DB flows
+        // Collect DB flows for items
         viewModelScope.launch {
             repository.activeItems.collectLatest { items ->
                 _uiState.value = _uiState.value.copy(activeItems = items)
@@ -94,6 +107,34 @@ class MainViewModel(
                 _uiState.value = _uiState.value.copy(allItems = items)
                 updateVaultFilter(_uiState.value.selectedCategory, items)
                 updateCalendarFilter(_uiState.value.selectedCalendarDate, items)
+            }
+        }
+
+        // Collect DB flows for bills & cards
+        viewModelScope.launch {
+            billRepository.allBills.collectLatest { allBillsList ->
+                val unpaid = allBillsList.filter { it.status != BillStatus.PAID.name && it.status != BillStatus.CANCELLED.name }
+                val paid = allBillsList.filter { it.status == BillStatus.PAID.name }
+                val totalDue = unpaid.sumOf { it.amountDue }
+
+                _uiState.value = _uiState.value.copy(
+                    bills = allBillsList,
+                    unpaidBills = unpaid,
+                    paidBills = paid,
+                    totalAmountDue = totalDue
+                )
+            }
+        }
+
+        viewModelScope.launch {
+            billRepository.allCards.collectLatest { cardList ->
+                _uiState.value = _uiState.value.copy(cards = cardList)
+            }
+        }
+
+        viewModelScope.launch {
+            billRepository.allPayments.collectLatest { paymentsList ->
+                _uiState.value = _uiState.value.copy(paymentRecords = paymentsList)
             }
         }
 
@@ -186,6 +227,72 @@ class MainViewModel(
         }
     }
 
+    fun setSelectedBillTab(index: Int) {
+        _uiState.value = _uiState.value.copy(selectedBillTab = index)
+    }
+
+    fun setSelectedBillTypeFilter(filter: String) {
+        _uiState.value = _uiState.value.copy(selectedBillTypeFilter = filter)
+    }
+
+    // --- Bill Management ---
+
+    fun saveBill(bill: Bill) {
+        viewModelScope.launch {
+            billRepository.insertBill(bill)
+        }
+    }
+
+    fun updateBill(bill: Bill) {
+        viewModelScope.launch {
+            billRepository.updateBill(bill)
+        }
+    }
+
+    fun deleteBill(bill: Bill) {
+        viewModelScope.launch {
+            billRepository.deleteBill(bill)
+        }
+    }
+
+    fun markBillAsPaid(
+        bill: Bill,
+        paymentMethod: String? = null,
+        cardId: String? = null,
+        notes: String? = null
+    ) {
+        viewModelScope.launch {
+            billRepository.markBillAsPaid(bill, paymentMethod, cardId, notes)
+            // Also mark corresponding UserItem completed if linked
+            val userItem = repository.checkForDuplicate(bill.provider ?: bill.billType, bill.amountDue, bill.dueDate)
+            if (userItem != null) {
+                repository.markCompleted(userItem)
+            }
+        }
+    }
+
+    // --- Card Management ---
+
+    fun saveCard(card: CardItem) {
+        viewModelScope.launch {
+            billRepository.insertCard(card)
+        }
+    }
+
+    fun updateCard(card: CardItem) {
+        viewModelScope.launch {
+            billRepository.updateCard(card)
+        }
+    }
+
+    fun deleteCard(card: CardItem) {
+        viewModelScope.launch {
+            billRepository.deleteCard(card)
+        }
+    }
+
+    // --- AI Processing ---
+
     fun analyzeAndProcessText(text: String, source: String = "Text") {
         if (text.isBlank()) return
         viewModelScope.launch {
@@ -195,10 +302,10 @@ class MainViewModel(
                 isCaptureSheetOpen = false
             )
 
-            delay(400)
+            delay(300)
             _uiState.value = _uiState.value.copy(analysisStage = "Finding dates and amounts…")
 
-            delay(400)
+            delay(300)
             _uiState.value = _uiState.value.copy(analysisStage = "Organizing into actionable records…")
 
             val result = aiService.analyzeText(text)
@@ -244,7 +351,7 @@ class MainViewModel(
             amount = result.amount,
             currency = result.currency,
             person = result.person,
-            organization = result.organization,
+            organization = result.organization ?: result.billProvider,
             location = result.location,
             source = source,
             originalContent = originalContent,
@@ -278,6 +385,29 @@ class MainViewModel(
     fun confirmPendingItem(item: UserItem) {
         viewModelScope.launch {
             repository.insertItem(item)
+
+            // If this is a bill with an amount, automatically stage/insert in Bills table as well!
+            if (item.contentType == ContentType.BILL.name || item.type == ItemType.PAYMENT.name || item.category == ItemCategory.FINANCE.name) {
+                if (item.amount != null && item.amount > 0) {
+                    val billType = mapToBillType(item.title)
+                    val bill = Bill(
+                        id = item.id,
+                        billType = billType.name,
+                        provider = item.organization ?: extractProviderFromTitle(item.title),
+                        amountDue = item.amount,
+                        currency = item.currency ?: "BDT",
+                        dueDate = item.dueDate,
+                        dueTimestamp = item.dueTimestamp,
+                        billingPeriod = "Current Cycle",
+                        status = BillStatus.UNPAID.name,
+                        source = item.source,
+                        notes = item.description,
+                        reminderTimestamp = item.reminderTimestamp
+                    )
+                    billRepository.insertBill(bill)
+                }
+            }
+
             _uiState.value = _uiState.value.copy(
                 pendingConfirmationItem = null,
                 duplicateWarningItem = null
@@ -388,23 +518,49 @@ class MainViewModel(
     fun deleteAllData() {
         viewModelScope.launch {
             repository.deleteAllData()
+            billRepository.deleteAll()
         }
     }
 
     suspend fun getExportJson(): String {
         return repository.exportDataAsJson(_uiState.value.allItems)
     }
+
+    private fun mapToBillType(title: String): BillType {
+        val t = title.lowercase()
+        return when {
+            t.contains("gas") || t.contains("গ্যাস") -> BillType.GAS
+            t.contains("electricity") || t.contains("electric") || t.contains("বিদ্যুৎ") -> BillType.ELECTRICITY
+            t.contains("water") || t.contains("পানি") -> BillType.WATER
+            t.contains("internet") || t.contains("wifi") -> BillType.INTERNET
+            t.contains("mobile") || t.contains("phone") -> BillType.MOBILE
+            t.contains("rent") -> BillType.RENT
+            t.contains("tuition") || t.contains("fee") -> BillType.TUITION
+            t.contains("insurance") -> BillType.INSURANCE
+            t.contains("card") -> BillType.CREDIT_CARD
+            t.contains("loan") -> BillType.LOAN
+            t.contains("subscription") -> BillType.SUBSCRIPTION
+            else -> BillType.OTHER
+        }
+    }
+
+    private fun extractProviderFromTitle(title: String): String? {
+        val lower = title.lowercase()
+        val providers = listOf("desco", "dpdc", "reb", "nesco", "titas", "wasa", "btcl", "link3", "carnival")
+        return providers.firstOrNull { lower.contains(it) }?.uppercase()
+    }
 }
 
 class ViewModelFactory(
     private val repository: ItemRepository,
+    private val billRepository: BillRepository,
     private val preferencesManager: PreferencesManager,
     private val aiService: AIService
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(MainViewModel::class.java)) {
-            return MainViewModel(repository, preferencesManager, aiService) as T
+            return MainViewModel(repository, billRepository, preferencesManager, aiService) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

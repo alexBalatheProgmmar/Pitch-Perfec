@@ -34,6 +34,7 @@ import com.example.data.local.LifeVaultDatabase
 import com.example.data.local.PreferencesManager
 import com.example.data.model.UserItem
 import com.example.data.remote.AIServiceImpl
+import com.example.data.repository.BillRepository
 import com.example.data.repository.ItemRepository
 import com.example.ui.components.capture.CaptureBottomSheet
 import com.example.ui.components.confirm.AnalyzingOverlay
@@ -41,6 +42,7 @@ import com.example.ui.components.confirm.ConfirmationDialog
 import com.example.ui.components.navigation.FloatingNavBar
 import com.example.ui.navigation.Screen
 import com.example.ui.screens.assistant.AssistantDialog
+import com.example.ui.screens.bills.BillsScreen
 import com.example.ui.screens.calendar.CalendarScreen
 import com.example.ui.screens.detail.ItemDetailScreen
 import com.example.ui.screens.edit.ItemEditScreen
@@ -59,9 +61,10 @@ class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels {
         val db = LifeVaultDatabase.getDatabase(applicationContext)
         val repository = ItemRepository(applicationContext, db.userItemDao())
+        val billRepository = BillRepository(applicationContext, db.billDao(), db.cardDao(), db.paymentRecordDao())
         val preferences = PreferencesManager(applicationContext)
         val aiService = AIServiceImpl()
-        ViewModelFactory(repository, preferences, aiService)
+        ViewModelFactory(repository, billRepository, preferences, aiService)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -205,6 +208,23 @@ fun LifeVaultApp(
                             onToggleComplete = { viewModel.markItemComplete(it) },
                             onSnoozeItem = { item, hours -> viewModel.snoozeItem(item, hours) },
                             onUndoComplete = { viewModel.undoLastComplete() }
+                        )
+                    }
+
+                    composable(Screen.Bills.route) {
+                        BillsScreen(
+                            uiState = uiState,
+                            onSaveBill = { viewModel.saveBill(it) },
+                            onUpdateBill = { viewModel.updateBill(it) },
+                            onDeleteBill = { viewModel.deleteBill(it) },
+                            onMarkBillPaid = { bill, method, cardId, notes ->
+                                viewModel.markBillAsPaid(bill, method, cardId, notes)
+                            },
+                            onSaveCard = { viewModel.saveCard(it) },
+                            onUpdateCard = { viewModel.updateCard(it) },
+                            onDeleteCard = { viewModel.deleteCard(it) },
+                            onTabSelected = { viewModel.setSelectedBillTab(it) },
+                            onFilterTypeSelected = { viewModel.setSelectedBillTypeFilter(it) }
                         )
                     }
 

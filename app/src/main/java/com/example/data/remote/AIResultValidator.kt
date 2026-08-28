@@ -269,6 +269,10 @@ object AIResultValidator {
     private fun isShortNameOrGreeting(text: String): Boolean {
         val lower = text.lowercase(Locale.ROOT)
         val greetings = listOf("this is ", "hello", "hi", "hey", "good morning", "good evening", "my name is", "how are you")
-        return greetings.any { lower.startsWith(it) || lower == it } || (lower.split("\\s+".toRegex()).size <= 3 && !lower.contains("due") && !lower.contains("pay") && !lower.contains("meet"))
+        if (greetings.any { lower.startsWith(it) || lower == it }) return true
+        val hasFinancialOrActionKeyword = lower.contains("bill") || lower.contains("due") || lower.contains("pay") ||
+                lower.contains("meet") || lower.contains("appointment") || lower.contains("receipt") ||
+                lower.contains("subscription") || lower.contains("card") || containsCurrencySymbol(text) || text.any { it.isDigit() }
+        return !hasFinancialOrActionKeyword && lower.split("\\s+".toRegex()).size <= 3
     }
 }

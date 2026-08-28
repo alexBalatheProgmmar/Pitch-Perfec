@@ -2,6 +2,7 @@ package com.example.data.remote
 
 import com.example.data.model.AIAnalysisResult
 import com.example.data.model.Actionability
+import com.example.data.model.BillType
 import com.example.data.model.ContentType
 import com.example.data.model.ItemCategory
 import com.example.data.model.ItemPriority
@@ -75,7 +76,7 @@ object RuleBasedFallbackExtractor {
             ).validatedResult
         }
 
-        // 2. Educational / Academic / Definition Content
+        // 2. Educational / Academic / Definition Content (Check early before bills/tasks)
         if (isEducationalOrDefinitional(lower, cleanText)) {
             val title = extractTitleFromEducational(lines, cleanText)
             return AIResultValidator.validate(
@@ -86,7 +87,7 @@ object RuleBasedFallbackExtractor {
                     actionabilityConfidence = 0.98f,
                     extractionConfidence = 0.0f,
                     title = title,
-                    summary = "Educational material about $title.",
+                    summary = "Educational material: $title.",
                     description = cleanText,
                     type = ItemType.DOCUMENT.name,
                     category = ItemCategory.EDUCATION.name,
@@ -103,7 +104,35 @@ object RuleBasedFallbackExtractor {
             ).validatedResult
         }
 
-        // 3. News / Articles / Press Releases
+        // 3. Card / Payment Method Information (INFORMATIONAL / RECORD)
+        if (isCardOrPaymentMethod(lower, cleanText)) {
+            val cardTitle = extractCardTitle(cleanText, lower)
+            return AIResultValidator.validate(
+                AIAnalysisResult(
+                    contentType = ContentType.CARD.name,
+                    actionability = Actionability.INFORMATIONAL.name,
+                    contentTypeConfidence = 0.94f,
+                    actionabilityConfidence = 0.96f,
+                    extractionConfidence = 0.90f,
+                    title = cardTitle,
+                    summary = "Payment card details for $cardTitle",
+                    description = cleanText,
+                    type = ItemType.DOCUMENT.name,
+                    category = ItemCategory.FINANCE.name,
+                    action = "",
+                    priority = ItemPriority.LOW.name,
+                    confidence = 0.94f,
+                    evidence = cleanText.take(100),
+                    reason = "Payment method / card information recorded safely.",
+                    explanation = "Detected payment card info. No bill payment required.",
+                    isActionable = false,
+                    isUncertain = false
+                ),
+                cleanText
+            ).validatedResult
+        }
+
+        // 4. News / Articles / Press Releases
         if (isNewsArticle(lower, cleanText)) {
             val title = firstLine.take(60)
             return AIResultValidator.validate(
@@ -135,35 +164,34 @@ object RuleBasedFallbackExtractor {
         val (extractedDate, isDateUncertain) = extractDate(cleanText, lower)
         val extractedTime = extractTime(cleanText)
 
-        // Extract Monetary Amount
-        val (extractedAmount, extractedCurrency) = extractMoney(cleanText)
+        // Extract Monetary Amount (with special handling for Total Due vs Previous Balance)
+        val (extractedAmount, extractedCurrency) = extractBillFinancials(cleanText, lower)
 
-        // 4. Active Bill / Utility Payment Detection (ACTIONABLE)
+        // 5. Active Bill / Utility Payment Detection (ACTIONABLE)
         if (isBillPaymentObligation(lower, extractedAmount, extractedDate)) {
-            val title = if (lower.contains("electricity") || lower.contains("বিদ্যুৎ")) "Electricity Bill"
-            else if (lower.contains("water") || lower.contains("পানি")) "Water Bill"
-            else if (lower.contains("gas") || lower.contains("গ্যাস")) "Gas Bill"
-            else if (lower.contains("internet") || lower.contains("wifi")) "Internet Bill"
-            else "Bill Payment"
+            val detectedBillType = detectBillType(lower)
+            val provider = extractBillProvider(lower)
+            val title = if (provider != null) "$provider ${detectedBillType.displayName}" else detectedBillType.displayName
 
             val evidence = cleanText.lines().firstOrNull { l ->
                 val ll = l.lowercase(Locale.ROOT)
-                ll.contains("bill") || ll.contains("due") || ll.contains("pay")
+                ll.contains("bill") || ll.contains("due") || ll.contains("pay") || ll.contains("charges") || ll.contains("টাকা") || ll.contains("৳")
             } ?: cleanText.take(100)
 
             val actionText = if (extractedAmount != null && extractedCurrency != null) {
-                "Pay $extractedCurrency${extractedAmount.toInt()} by ${extractedDate ?: "due date"}"
+                if (extractedDate != null) "Pay $extractedCurrency${extractedAmount.toInt()} by $extractedDate"
+                else "Pay $extractedCurrency${extractedAmount.toInt()}"
             } else "Pay bill"
 
             return AIResultValidator.validate(
                 AIAnalysisResult(
                     contentType = ContentType.BILL.name,
                     actionability = Actionability.ACTIONABLE.name,
-                    contentTypeConfidence = 0.94f,
+                    contentTypeConfidence = 0.96f,
                     actionabilityConfidence = 0.96f,
-                    extractionConfidence = 0.92f,
+                    extractionConfidence = 0.94f,
                     title = title,
-                    summary = "Bill payment obligation of ${extractedCurrency ?: ""}${extractedAmount?.toInt() ?: ""} due $extractedDate",
+                    summary = "${detectedBillType.displayName} of ${extractedCurrency ?: ""}${extractedAmount?.toInt() ?: ""}" + if (extractedDate != null) " due $extractedDate" else "",
                     description = cleanText,
                     type = ItemType.PAYMENT.name,
                     category = ItemCategory.FINANCE.name,
@@ -172,11 +200,13 @@ object RuleBasedFallbackExtractor {
                     time = extractedTime,
                     amount = extractedAmount,
                     currency = extractedCurrency,
+                    billType = detectedBillType.name,
+                    billProvider = provider,
                     priority = ItemPriority.HIGH.name,
                     confidence = 0.95f,
                     evidence = evidence,
-                    reason = "Explicit bill payment obligation with due date.",
-                    explanation = "Found bill payment deadline for $title.",
+                    reason = "Explicit bill payment obligation with amount due.",
+                    explanation = "Found bill payment obligation for $title.",
                     isActionable = true,
                     isUncertain = false
                 ),
@@ -184,7 +214,7 @@ object RuleBasedFallbackExtractor {
             ).validatedResult
         }
 
-        // 5. Active Subscription Renewal (ACTIONABLE)
+        // 6. Active Subscription Renewal (ACTIONABLE)
         if (isSubscriptionRenewal(lower, extractedAmount, extractedDate)) {
             val title = extractSubscriptionTitle(lower, firstLine)
             val interval = if (lower.contains("annual") || lower.contains("yearly") || lower.contains("year")) "YEARLY" else "MONTHLY"
@@ -201,7 +231,7 @@ object RuleBasedFallbackExtractor {
                     actionabilityConfidence = 0.94f,
                     extractionConfidence = 0.90f,
                     title = title,
-                    summary = "Subscription renewal on $extractedDate",
+                    summary = "Subscription renewal" + if (extractedDate != null) " on $extractedDate" else "",
                     description = cleanText,
                     type = ItemType.SUBSCRIPTION.name,
                     category = ItemCategory.FINANCE.name,
@@ -216,7 +246,7 @@ object RuleBasedFallbackExtractor {
                     confidence = 0.93f,
                     evidence = evidence,
                     reason = "Explicit subscription renewal detected.",
-                    explanation = "Detected subscription renewal on $extractedDate.",
+                    explanation = "Detected subscription renewal.",
                     isActionable = true,
                     isUncertain = false
                 ),
@@ -224,7 +254,7 @@ object RuleBasedFallbackExtractor {
             ).validatedResult
         }
 
-        // 6. Active Appointment Detection (ACTIONABLE)
+        // 7. Active Appointment Detection (ACTIONABLE)
         if (isAppointmentSchedule(lower, extractedDate, extractedTime)) {
             val title = extractAppointmentTitle(lower)
             val evidence = cleanText.lines().firstOrNull { l ->
@@ -262,7 +292,7 @@ object RuleBasedFallbackExtractor {
             ).validatedResult
         }
 
-        // 7. Store Purchase / Receipt (INFORMATIONAL / RECORD)
+        // 8. Store Purchase / Receipt (INFORMATIONAL / RECORD)
         if (isReceiptOrPurchase(lower, extractedAmount, extractedCurrency)) {
             val productName = extractProductName(cleanText, lower)
             val title = if (productName != null) "$productName Purchase" else "Store Purchase Receipt"
@@ -302,7 +332,7 @@ object RuleBasedFallbackExtractor {
             ).validatedResult
         }
 
-        // 8. Explicit Task / Actionable Deadline (ACTIONABLE)
+        // 9. Explicit Task / Actionable Deadline (ACTIONABLE)
         if (isExplicitUserTask(lower, cleanText)) {
             val taskTitle = extractTaskTitle(cleanText, lines)
             val evidence = cleanText.lines().firstOrNull { l ->
@@ -339,8 +369,7 @@ object RuleBasedFallbackExtractor {
             ).validatedResult
         }
 
-        // 9. Default Fallback: GENERAL_INFORMATION / INFORMATIONAL
-        // NEVER assume actionability if evidence is missing!
+        // 10. Default Fallback: GENERAL_INFORMATION / INFORMATIONAL
         val defaultTitle = firstLine.take(50)
         return AIResultValidator.validate(
             AIAnalysisResult(
@@ -371,7 +400,7 @@ object RuleBasedFallbackExtractor {
         ).validatedResult
     }
 
-    // Helper functions
+    // --- Helper Functions ---
 
     private fun isShortPersonalNoteOrGreeting(lower: String, clean: String): Boolean {
         if (clean.length > 50) return false
@@ -379,7 +408,7 @@ object RuleBasedFallbackExtractor {
         if (words.size <= 4) {
             val nonActionWords = listOf("this", "is", "alex", "john", "mary", "hello", "hi", "hey", "test", "my", "name", "good", "morning", "night", "thanks", "ok")
             if (words.all { nonActionWords.contains(it) || it.all { ch -> ch.isLetter() } }) {
-                return !lower.contains("due") && !lower.contains("pay") && !lower.contains("submit")
+                return !lower.contains("due") && !lower.contains("pay") && !lower.contains("submit") && !lower.contains("bill")
             }
         }
         return lower.startsWith("this is ") || lower == "hello" || lower == "hi" || lower.startsWith("my name is")
@@ -389,7 +418,8 @@ object RuleBasedFallbackExtractor {
         val educationalKeywords = listOf(
             "a modifier is", "modifiers", "grammar", "chapter ", "section ", "exercise ",
             "textbook", "formula", "definition", "means to", "is defined as", "the word '",
-            "mathematical", "physics notes", "chemistry", "biology", "lecture notes", "syllabus"
+            "mathematical", "physics notes", "chemistry", "biology", "lecture notes", "syllabus",
+            "what is a bill", "bills are defined", "understanding bills and utilities"
         )
         val hasDefinitionalStructure = lower.contains("means to") || lower.contains("refers to") || lower.contains("is defined as")
         val isModifierDoc = lower.contains("modifier") || lower.contains("pre-modifier") || lower.contains("post-modifier")
@@ -417,6 +447,26 @@ object RuleBasedFallbackExtractor {
         return lines.firstOrNull()?.take(45) ?: "Educational Reference"
     }
 
+    private fun isCardOrPaymentMethod(lower: String, clean: String): Boolean {
+        val hasCardWord = lower.contains("visa") || lower.contains("mastercard") || lower.contains("amex") ||
+                lower.contains("credit card") || lower.contains("debit card") || lower.contains("ending in") ||
+                lower.contains("ending ") || lower.contains("card number") || lower.contains("cardholder")
+        val hasBillDue = lower.contains("due") || lower.contains("bill") || lower.contains("payable")
+        // If it's pure card info like "My Visa ending 4821" or "Credit card info", classify as CARD
+        return hasCardWord && !hasBillDue
+    }
+
+    private fun extractCardTitle(cleanText: String, lower: String): String {
+        return when {
+            lower.contains("visa") -> "Visa Card"
+            lower.contains("mastercard") -> "Mastercard"
+            lower.contains("amex") -> "American Express Card"
+            lower.contains("debit") -> "Debit Card"
+            lower.contains("credit") -> "Credit Card"
+            else -> "Payment Method"
+        }
+    }
+
     private fun isNewsArticle(lower: String, text: String): Boolean {
         val newsTriggers = listOf(
             "scientists discovered", "researchers found", "according to reports", "breaking news",
@@ -427,10 +477,45 @@ object RuleBasedFallbackExtractor {
     }
 
     private fun isBillPaymentObligation(lower: String, amount: Double?, date: String?): Boolean {
-        val hasBillWord = lower.contains("bill") || lower.contains("electricity") || lower.contains("utility") ||
-                lower.contains("gas bill") || lower.contains("water bill") || lower.contains("internet bill") || lower.contains("বিল")
-        val hasDueOrPay = lower.contains("due") || lower.contains("pay") || lower.contains("payable") || lower.contains("amount due")
-        return hasBillWord && (hasDueOrPay || amount != null)
+        val billKeywords = listOf(
+            "gas bill", "electricity bill", "water bill", "internet bill", "wifi bill", "mobile bill",
+            "telephone bill", "tv bill", "cable bill", "rent", "tuition", "insurance premium",
+            "credit card bill", "loan payment", "government fee", "bill", "বিল", "বিদ্যুৎ", "গ্যাস", "পানি", "ওয়াসা"
+        )
+        val hasBillKeyword = billKeywords.any { lower.contains(it) }
+        val hasPaymentSignal = lower.contains("due") || lower.contains("pay") || lower.contains("payable") ||
+                lower.contains("balance") || lower.contains("charges") || lower.contains("টাকা") || lower.contains("৳")
+        return hasBillKeyword && (amount != null || hasPaymentSignal)
+    }
+
+    private fun detectBillType(lower: String): BillType {
+        return when {
+            lower.contains("gas") || lower.contains("গ্যাস") || lower.contains("titas") || lower.contains("bakhrabad") -> BillType.GAS
+            lower.contains("electricity") || lower.contains("electric") || lower.contains("বিদ্যুৎ") || lower.contains("desco") || lower.contains("dpdc") || lower.contains("nesco") || lower.contains("reb") -> BillType.ELECTRICITY
+            lower.contains("water") || lower.contains("পানি") || lower.contains("wasa") || lower.contains("ওয়াসা") -> BillType.WATER
+            lower.contains("internet") || lower.contains("wifi") || lower.contains("broadband") || lower.contains("fiber") || lower.contains("link3") || lower.contains("carnival") -> BillType.INTERNET
+            lower.contains("mobile bill") || lower.contains("postpaid") || lower.contains("grameenphone") || lower.contains("banglalink") || lower.contains("robi") || lower.contains("airtel") || lower.contains("teletalk") -> BillType.MOBILE
+            lower.contains("telephone") || lower.contains("landline") || lower.contains("btcl") -> BillType.TELEPHONE
+            lower.contains("tv") || lower.contains("cable") || lower.contains("dish") || lower.contains("akash") -> BillType.TV_CABLE
+            lower.contains("rent") || lower.contains("house rent") || lower.contains("apartment rent") || lower.contains("ভাড়া") -> BillType.RENT
+            lower.contains("tuition") || lower.contains("school fee") || lower.contains("college fee") || lower.contains("university fee") || lower.contains("semester fee") || lower.contains("বেতন") -> BillType.TUITION
+            lower.contains("insurance") || lower.contains("premium") -> BillType.INSURANCE
+            lower.contains("credit card bill") || lower.contains("card statement") || lower.contains("card bill") -> BillType.CREDIT_CARD
+            lower.contains("loan") || lower.contains("emi") || lower.contains("installment") -> BillType.LOAN
+            lower.contains("government") || lower.contains("tax bill") || lower.contains("holding tax") || lower.contains("municipal") -> BillType.GOVERNMENT
+            lower.contains("subscription") -> BillType.SUBSCRIPTION
+            else -> BillType.OTHER
+        }
+    }
+
+    private fun extractBillProvider(lower: String): String? {
+        val providers = listOf(
+            "desco", "dpdc", "reb", "nesco", "bpdb", "titas", "bakhrabad", "jalalabad", "wasa",
+            "btcl", "link3", "carnival", "amber it", "grameenphone", "robi", "banglalink", "teletalk",
+            "comcast", "xfinity", "at&t", "verizon", "t-mobile", "con edison", "pge"
+        )
+        val matched = providers.firstOrNull { lower.contains(it) }
+        return matched?.uppercase(Locale.ROOT)
     }
 
     private fun isSubscriptionRenewal(lower: String, amount: Double?, date: String?): Boolean {
@@ -469,7 +554,6 @@ object RuleBasedFallbackExtractor {
     private fun isReceiptOrPurchase(lower: String, amount: Double?, currency: String?): Boolean {
         val purchaseWords = listOf("receipt", "invoice", "purchased", "purchase", "order #", "store #", "ssd", "samsung ssd", "pos terminal")
         val hasPurchaseWord = purchaseWords.any { lower.contains(it) }
-        // Ensure not word count like "8,500 words"
         val isWordCount = lower.contains("words") || lower.contains("total words") || lower.contains("pages")
         return hasPurchaseWord && !isWordCount && (amount != null || currency != null || lower.contains("receipt"))
     }
@@ -490,12 +574,11 @@ object RuleBasedFallbackExtractor {
     }
 
     private fun isExplicitUserTask(lower: String, clean: String): Boolean {
-        // Exclude educational definitions
         if (lower.contains("means to") || lower.contains("is defined as") || lower.contains("the word '")) {
             return false
         }
         val taskImperatives = listOf(
-            "submit your", "submit the", "must submit", "call ", "buy groceries", "pay ",
+            "submit your", "submit the", "must submit", "call ", "buy groceries",
             "finish the", "complete the", "don't forget to", "remember to", "deliver to", "pick up"
         )
         return taskImperatives.any { lower.contains(it) }
@@ -511,32 +594,66 @@ object RuleBasedFallbackExtractor {
         }
     }
 
-    private fun extractMoney(text: String): Pair<Double?, String?> {
-        val lower = text.lowercase(Locale.ROOT)
+    /**
+     * Extracts the true amount due by prioritizing "total due", "amount due", "payable"
+     * over previous balance or individual line item charges.
+     */
+    private fun extractBillFinancials(text: String, lower: String): Pair<Double?, String?> {
         // Guard against word counts (e.g. "Total 8,500 words")
-        if (lower.contains("words") || lower.contains("total words") || lower.contains("word count")) {
-            // Check if there is also an explicit currency symbol
-            if (!text.contains("৳") && !text.contains("$") && !text.contains("€") && !text.contains("£") && !text.contains("bdt") && !text.contains("tk")) {
-                return Pair(null, null)
+        if ((lower.contains("words") || lower.contains("total words") || lower.contains("word count")) &&
+            !text.contains("৳") && !text.contains("$") && !text.contains("€") && !text.contains("£") && !text.contains("bdt") && !text.contains("tk") && !text.contains("taka")
+        ) {
+            return Pair(null, null)
+        }
+
+        val totalDuePattern = Pattern.compile("(?i)(?:total\\s+due|amount\\s+due|balance\\s+due|total\\s+payable|payable|total\\s+amount|net\\s+payable)\\s*[:=]?\\s*(?:৳|\\$|€|£|bdt|tk|taka|টাকা)?\\s*([0-9,]+(?:\\.[0-9]{1,2})?)\\s*(?:৳|\\$|€|£|bdt|tk|taka|টাকা)?")
+        val totalDueMatcher = totalDuePattern.matcher(text)
+        if (totalDueMatcher.find()) {
+            val amountStr = totalDueMatcher.group(1)?.replace(",", "")
+            val amount = amountStr?.toDoubleOrNull()
+            val currency = extractCurrencySymbol(text)
+            if (amount != null) {
+                return Pair(amount, currency)
             }
         }
 
-        val moneyPattern = Pattern.compile("(?i)(৳|\\$|€|£|bdt|tk|টাকা)\\s*([0-9,]+(?:\\.[0-9]{1,2})?)|([0-9,]+(?:\\.[0-9]{1,2})?)\\s*(৳|\\$|€|£|bdt|tk|টাকা)")
+        // Generic currency extraction
+        val moneyPattern = Pattern.compile("(?i)(৳|\\$|€|£|bdt|tk|টাকা|taka)\\s*([0-9,]+(?:\\.[0-9]{1,2})?)|([0-9,]+(?:\\.[0-9]{1,2})?)\\s*(৳|\\$|€|£|bdt|tk|টাকা|taka)")
         val moneyMatcher = moneyPattern.matcher(text)
-        if (moneyMatcher.find()) {
+        var lastAmount: Double? = null
+        var lastCurrency = "৳"
+
+        while (moneyMatcher.find()) {
             val currGroup = moneyMatcher.group(1) ?: moneyMatcher.group(4)
             val numGroup = moneyMatcher.group(2) ?: moneyMatcher.group(3)
             val amount = numGroup?.replace(",", "")?.toDoubleOrNull()
-            val currency = when (currGroup?.lowercase(Locale.ROOT)?.trim()) {
-                "৳", "bdt", "tk", "টাকা" -> "৳"
-                "$" -> "$"
-                "€" -> "€"
-                "£" -> "£"
-                else -> currGroup ?: "৳"
+            if (amount != null) {
+                lastAmount = amount
+                lastCurrency = when (currGroup?.lowercase(Locale.ROOT)?.trim()) {
+                    "৳", "bdt", "tk", "taka", "টাকা" -> "৳"
+                    "$" -> "$"
+                    "€" -> "€"
+                    "£" -> "£"
+                    else -> currGroup ?: "৳"
+                }
             }
-            return Pair(amount, currency)
         }
+
+        if (lastAmount != null) {
+            return Pair(lastAmount, lastCurrency)
+        }
+
         return Pair(null, null)
+    }
+
+    private fun extractCurrencySymbol(text: String): String {
+        return when {
+            text.contains("$") -> "$"
+            text.contains("€") -> "€"
+            text.contains("£") -> "£"
+            text.contains("₹") -> "₹"
+            else -> "৳"
+        }
     }
 
     private fun extractDate(text: String, lower: String): Pair<String?, Boolean> {

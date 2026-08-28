@@ -24,6 +24,7 @@ enum class ContentType(val displayName: String, val iconEmoji: String) {
     DELIVERY("Delivery", "📦"),
     TRAVEL("Travel", "✈️"),
     DOCUMENT("Document", "📄"),
+    CARD("Card / Payment Method", "💳"),
     OTHER("Other", "🗂️")
 }
 
@@ -150,6 +151,8 @@ data class AIAnalysisResult(
     val product: String? = null,
     val subscription: String? = null,
     val appointment: String? = null,
+    val billType: String? = null,
+    val billProvider: String? = null,
     val priority: String = ItemPriority.MEDIUM.name,
     val confidence: Float = 0.85f,
     val evidence: String? = null,

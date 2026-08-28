@@ -277,6 +277,17 @@ fun HomeScreen(
                 }
             }
 
+            // Section: Bills & Dues Widget (if any unpaid bills)
+            if (uiState.unpaidBills.isNotEmpty()) {
+                item {
+                    com.example.ui.screens.home.components.BillsHomeWidget(
+                        unpaidBills = uiState.unpaidBills,
+                        totalAmountDue = uiState.totalAmountDue,
+                        onViewBills = { /* Navigation handled via bills tab or action */ }
+                    )
+                }
+            }
+
             // Section: Needs Attention
             if (urgentItems.isNotEmpty()) {
                 item {

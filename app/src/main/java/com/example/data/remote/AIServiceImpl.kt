@@ -34,7 +34,7 @@ class AIServiceImpl(
         
         PIPELINE RULES:
         1. CONTENT TYPE CLASSIFICATION:
-           Allowed values: GENERAL_INFORMATION, NEWS_ARTICLE, EDUCATIONAL_CONTENT, PERSONAL_NOTE, CONVERSATION, TASK, DEADLINE, APPOINTMENT, EVENT, PAYMENT, BILL, RECEIPT, PURCHASE, SUBSCRIPTION, WARRANTY, RETURN, DELIVERY, TRAVEL, DOCUMENT, OTHER.
+           Allowed values: GENERAL_INFORMATION, NEWS_ARTICLE, EDUCATIONAL_CONTENT, PERSONAL_NOTE, CONVERSATION, TASK, DEADLINE, APPOINTMENT, EVENT, PAYMENT, BILL, RECEIPT, PURCHASE, SUBSCRIPTION, WARRANTY, RETURN, DELIVERY, TRAVEL, DOCUMENT, CARD, OTHER.
         
         2. ACTIONABILITY CLASSIFICATION:
            Allowed values: ACTIONABLE, INFORMATIONAL, UNCERTAIN.
@@ -43,36 +43,45 @@ class AIServiceImpl(
            - "English Modifiers — A modifier is a word that modifies..." -> INFORMATIONAL
            - "Chapter 5 — Total 8,500 words." -> INFORMATIONAL
            - "Submit the assignment by Friday." -> ACTIONABLE
-           - "Your electricity bill of ৳1,850 is due September 2." -> ACTIONABLE
+           - "Your electricity bill of ৳1,850 is due September 2." -> ACTIONABLE (BILL)
+           - "Gas bill ৳750." -> ACTIONABLE (BILL, amount=750, due_date=null)
+           - "My Visa ending 4821" -> INFORMATIONAL (CARD)
            - "Your subscription renews September 15 for $49.99." -> ACTIONABLE
            - "Your dentist appointment is September 4 at 3 PM." -> ACTIONABLE
         
-        3. EVIDENCE & REASONING:
+        3. FINANCIAL & BILL RULES:
+           - Separate the amount due from other numbers (previous balance, charges, tax, account numbers).
+           - Do not invent due dates if none is mentioned.
+           - Allowed bill_type values: GAS, ELECTRICITY, WATER, INTERNET, MOBILE, TELEPHONE, TV_CABLE, RENT, TUITION, INSURANCE, CREDIT_CARD, LOAN, GOVERNMENT, SUBSCRIPTION, OTHER.
+        
+        4. EVIDENCE & REASONING:
            Provide evidence quoting directly from the user's text for any actionable item.
            If informational, set action=null, due_date=null, amount=null, evidence=null, and explain in reason.
         
         Return ONLY valid JSON matching this schema:
         {
-          "content_type": "EDUCATIONAL_CONTENT",
-          "actionability": "INFORMATIONAL",
+          "content_type": "BILL",
+          "actionability": "ACTIONABLE",
           "confidence": {
             "content_type": 0.98,
             "actionability": 0.99,
-            "extraction": 0.0
+            "extraction": 0.95
           },
-          "title": "Short descriptive title (max 5 words)",
-          "summary": "Clean summary of content",
-          "action": null,
+          "title": "Gas Bill",
+          "summary": "Gas bill payment obligation",
+          "bill_type": "GAS",
+          "provider": "TITAS",
+          "action": "Pay ৳750",
           "due_date": null,
           "due_time": null,
-          "amount": null,
-          "currency": null,
+          "amount": 750.0,
+          "currency": "৳",
           "merchant": null,
           "product": null,
           "subscription": null,
           "appointment": null,
-          "evidence": null,
-          "reason": "Clear explanation of why this was classified as informational or actionable"
+          "evidence": "Gas bill ৳750",
+          "reason": "Explicit gas bill payment obligation detected."
         }
     """.trimIndent()
 
@@ -272,6 +281,8 @@ class AIServiceImpl(
             val product = if (obj.isNull("product") || obj.optString("product").isBlank() || obj.optString("product") == "null") null else obj.optString("product")
             val subscription = if (obj.isNull("subscription") || obj.optString("subscription").isBlank() || obj.optString("subscription") == "null") null else obj.optString("subscription")
             val appointment = if (obj.isNull("appointment") || obj.optString("appointment").isBlank() || obj.optString("appointment") == "null") null else obj.optString("appointment")
+            val billType = if (obj.isNull("bill_type") || obj.optString("bill_type").isBlank() || obj.optString("bill_type") == "null") null else obj.optString("bill_type")
+            val billProvider = if (obj.isNull("provider") || obj.optString("provider").isBlank() || obj.optString("provider") == "null") null else obj.optString("provider")
             val evidence = if (obj.isNull("evidence") || obj.optString("evidence").isBlank() || obj.optString("evidence") == "null") null else obj.optString("evidence")
             val reason = if (obj.isNull("reason") || obj.optString("reason").isBlank() || obj.optString("reason") == "null") null else obj.optString("reason")
 
@@ -298,6 +309,8 @@ class AIServiceImpl(
                 product = product,
                 subscription = subscription,
                 appointment = appointment,
+                billType = billType,
+                billProvider = billProvider,
                 priority = if (actionability == Actionability.ACTIONABLE.name) ItemPriority.HIGH.name else ItemPriority.LOW.name,
                 confidence = (contentTypeConfidence * 0.4f + actionabilityConfidence * 0.6f).coerceIn(0.0f, 1.0f),
                 evidence = evidence,

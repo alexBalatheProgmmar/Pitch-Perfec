@@ -4,11 +4,46 @@
 
     <!-- Navigation -->
     <string name="nav_home">Home</string>
+    <string name="nav_bills">Bills &amp; Wallet</string>
     <string name="nav_inbox">Inbox</string>
     <string name="nav_calendar">Calendar</string>
     <string name="nav_vault">Vault</string>
     <string name="nav_capture">Capture</string>
     <string name="nav_settings">Settings</string>
+
+    <!-- Bills & Payments -->
+    <string name="tab_bills">Bills</string>
+    <string name="tab_cards">My Cards</string>
+    <string name="tab_history">History</string>
+    <string name="bills_total_due">Total Due</string>
+    <string name="bills_unpaid_count">%1$d Unpaid Bills</string>
+    <string name="bills_due_soon">Due Soon &amp; Overdue</string>
+    <string name="bills_upcoming">Upcoming</string>
+    <string name="bills_paid_title">Paid / Settled</string>
+    <string name="bills_no_due_date">No due date</string>
+    <string name="action_mark_paid">Mark as Paid</string>
+    <string name="action_add_bill">Add Bill</string>
+    <string name="action_add_card">Add Card</string>
+    <string name="action_remind_me">Remind Me</string>
+    <string name="bill_provider_label">Provider / Company</string>
+    <string name="bill_type_label">Bill Type</string>
+    <string name="bill_amount_label">Amount Due</string>
+    <string name="bill_due_date_label">Due Date</string>
+    <string name="bill_billing_period">Billing Period</string>
+    <string name="bill_number_label">Bill / Account Number</string>
+    <string name="card_wallet_title">My Payment Cards</string>
+    <string name="card_wallet_security_note">Safe Wallet — LifeVault stores only non-sensitive metadata (nickname, last 4 digits). PINs, CVVs, and full card numbers are never stored.</string>
+    <string name="card_nickname_label">Card Nickname</string>
+    <string name="card_network_label">Card Network</string>
+    <string name="card_type_label">Card Type</string>
+    <string name="card_last4_label">Last 4 Digits</string>
+    <string name="card_holder_label">Cardholder Name (Optional)</string>
+    <string name="card_issuer_label">Bank / Issuer (Optional)</string>
+    <string name="card_color_theme">Color Theme</string>
+    <string name="payment_history_title">Payment History</string>
+    <string name="payment_history_empty">No completed payments yet.</string>
+    <string name="bills_widget_title">Bills &amp; Payments</string>
+    <string name="bills_widget_cta">View Bills</string>
 
     <!-- Greetings & Summaries -->
     <string name="greeting_morning">Good morning 👋</string>
