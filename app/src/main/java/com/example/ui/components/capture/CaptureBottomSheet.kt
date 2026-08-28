@@ -136,8 +136,16 @@ fun CaptureBottomSheet(
     ) { uri: Uri? ->
         uri?.let {
             documentFileName = it.lastPathSegment ?: "Document.pdf"
-            if (inputText.isBlank()) {
-                inputText = "Insurance / Service Document: $documentFileName\nRenewal due date: 2026-09-30\nAmount: ৳4500"
+            try {
+                val inputStream = context.contentResolver.openInputStream(it)
+                val text = inputStream?.bufferedReader()?.use { reader -> reader.readText() }
+                if (!text.isNullOrBlank()) {
+                    inputText = text.take(3000)
+                } else {
+                    inputText = "Document: $documentFileName"
+                }
+            } catch (e: Exception) {
+                inputText = "Document: $documentFileName"
             }
         }
     }

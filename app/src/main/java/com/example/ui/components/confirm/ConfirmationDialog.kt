@@ -24,10 +24,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.HelpOutline
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Warning
@@ -59,6 +62,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.R
+import com.example.data.model.Actionability
+import com.example.data.model.ContentType
 import com.example.data.model.ItemCategory
 import com.example.data.model.ItemType
 import com.example.data.model.UserItem
@@ -171,6 +176,10 @@ fun ConfirmationDialog(
     onDismiss: () -> Unit,
     onOpenExisting: (UserItem) -> Unit = {}
 ) {
+    val isInformational = item.actionability == Actionability.INFORMATIONAL.name
+    val isUncertain = item.actionability == Actionability.UNCERTAIN.name
+    val isActionable = item.actionability == Actionability.ACTIONABLE.name || (!isInformational && !isUncertain && item.action.isNotBlank())
+
     val (confidenceColor, confidenceLabel) = when {
         item.confidence >= 0.75f -> ConfidenceClear to "High"
         item.confidence >= 0.5f -> ConfidenceReview to "Review"
@@ -180,13 +189,19 @@ fun ConfirmationDialog(
     val typeEnum = try {
         ItemType.valueOf(item.type)
     } catch (e: Exception) {
-        ItemType.TASK
+        ItemType.NOTE
     }
 
     val categoryEnum = try {
         ItemCategory.valueOf(item.category)
     } catch (e: Exception) {
         ItemCategory.GENERAL
+    }
+
+    val contentTypeEnum = try {
+        ContentType.valueOf(item.contentType)
+    } catch (e: Exception) {
+        ContentType.GENERAL_INFORMATION
     }
 
     Dialog(
@@ -208,14 +223,18 @@ fun ConfirmationDialog(
                     .padding(22.dp)
                     .verticalScroll(rememberScrollState())
             ) {
-                // Header with Confidence Badge Capsule
+                // Header with Result Mode Badge & Confidence Capsule
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Surface(
-                        color = confidenceColor.copy(alpha = 0.12f),
+                        color = when {
+                            isInformational -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
+                            isUncertain -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f)
+                            else -> confidenceColor.copy(alpha = 0.12f)
+                        },
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Row(
@@ -227,19 +246,33 @@ fun ConfirmationDialog(
                                 modifier = Modifier
                                     .size(8.dp)
                                     .clip(CircleShape)
-                                    .background(confidenceColor)
+                                    .background(
+                                        when {
+                                            isInformational -> MaterialTheme.colorScheme.secondary
+                                            isUncertain -> MaterialTheme.colorScheme.tertiary
+                                            else -> confidenceColor
+                                        }
+                                    )
                             )
                             Text(
-                                text = "Confidence: $confidenceLabel",
+                                text = when {
+                                    isInformational -> "📄 Information Record"
+                                    isUncertain -> "🤔 LifeVault isn't sure"
+                                    else -> "Confidence: $confidenceLabel"
+                                },
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
-                                color = confidenceColor
+                                color = when {
+                                    isInformational -> MaterialTheme.colorScheme.onSecondaryContainer
+                                    isUncertain -> MaterialTheme.colorScheme.onTertiaryContainer
+                                    else -> confidenceColor
+                                }
                             )
                         }
                     }
 
                     Text(
-                        text = "AI Extracted",
+                        text = contentTypeEnum.displayName,
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.primary
@@ -301,8 +334,62 @@ fun ConfirmationDialog(
                     lineHeight = 28.sp
                 )
 
-                // Action Callout
-                if (item.action.isNotBlank()) {
+                // 1. Informational Mode Callout
+                if (isInformational) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(14.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Info,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                text = "This appears to be informational content. No task or deadline was detected.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                // 2. Uncertain Mode Callout
+                if (isUncertain) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Surface(
+                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f),
+                        shape = RoundedCornerShape(14.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.HelpOutline,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.tertiary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                text = "I couldn't confidently determine whether this contains an action.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                        }
+                    }
+                }
+
+                // 3. Actionable Mode Callout
+                if (isActionable && item.action.isNotBlank()) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Surface(
                         color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
@@ -331,7 +418,7 @@ fun ConfirmationDialog(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // Extracted Details Container (18dp rounded)
+                // Extracted Details Container
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(18.dp),
@@ -341,7 +428,7 @@ fun ConfirmationDialog(
                         modifier = Modifier.padding(14.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        // Type & Category
+                        // Category & Content Type
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
@@ -352,14 +439,14 @@ fun ConfirmationDialog(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                text = "${categoryEnum.iconEmoji} ${categoryEnum.displayName} • ${typeEnum.displayName}",
+                                text = "${categoryEnum.iconEmoji} ${categoryEnum.displayName} • ${contentTypeEnum.displayName}",
                                 style = MaterialTheme.typography.bodySmall,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                         }
 
-                        // Due Date
+                        // Due Date if present
                         if (!item.dueDate.isNullOrBlank()) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -379,7 +466,7 @@ fun ConfirmationDialog(
                             }
                         }
 
-                        // Amount
+                        // Amount if present
                         if (item.amount != null) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -421,8 +508,30 @@ fun ConfirmationDialog(
                     }
                 }
 
-                // AI Explanation Note
-                if (!item.explanation.isNullOrBlank()) {
+                // AI Evidence Box (Shows why LifeVault detected this)
+                if (!item.evidence.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Surface(
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            Text(
+                                text = "Evidence from content:",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "\"${item.evidence}\"",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                } else if (!item.explanation.isNullOrBlank()) {
                     Spacer(modifier = Modifier.height(10.dp))
                     Text(
                         text = "💡 ${item.explanation}",
@@ -434,11 +543,17 @@ fun ConfirmationDialog(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Actions: Dominant Confirm Pill + Edit + Discard
+                // Action Buttons
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    val primaryBtnLabel = when {
+                        isInformational -> "Save to Vault"
+                        isUncertain -> "Save as Information"
+                        else -> stringResource(R.string.confirm_save_btn)
+                    }
+
                     Button(
                         onClick = { onConfirm(item) },
                         modifier = Modifier
@@ -446,12 +561,18 @@ fun ConfirmationDialog(
                             .height(52.dp)
                             .testTag("confirm_save_button"),
                         shape = RoundedCornerShape(24.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isInformational) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary
+                        )
                     ) {
-                        Icon(imageVector = Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(
+                            imageVector = if (isInformational) Icons.Filled.Bookmark else Icons.Filled.Check,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = stringResource(R.string.confirm_save_btn),
+                            text = primaryBtnLabel,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -471,7 +592,10 @@ fun ConfirmationDialog(
                         ) {
                             Icon(imageVector = Icons.Filled.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text(stringResource(R.string.confirm_edit_btn), fontWeight = FontWeight.SemiBold)
+                            Text(
+                                if (isUncertain) "Review & Edit" else stringResource(R.string.confirm_edit_btn),
+                                fontWeight = FontWeight.SemiBold
+                            )
                         }
 
                         TextButton(

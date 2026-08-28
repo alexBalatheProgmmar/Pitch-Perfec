@@ -4,6 +4,35 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import java.util.UUID
 
+enum class ContentType(val displayName: String, val iconEmoji: String) {
+    GENERAL_INFORMATION("General Information", "ℹ️"),
+    NEWS_ARTICLE("News Article", "📰"),
+    EDUCATIONAL_CONTENT("Educational Content", "📚"),
+    PERSONAL_NOTE("Personal Note", "📝"),
+    CONVERSATION("Conversation", "💬"),
+    TASK("Task", "✅"),
+    DEADLINE("Deadline", "⏰"),
+    APPOINTMENT("Appointment", "🗓️"),
+    EVENT("Event", "🎉"),
+    PAYMENT("Payment", "💳"),
+    BILL("Bill", "🧾"),
+    RECEIPT("Receipt", "🧾"),
+    PURCHASE("Purchase", "🛍️"),
+    SUBSCRIPTION("Subscription", "🔄"),
+    WARRANTY("Warranty", "🛡️"),
+    RETURN("Return", "👟"),
+    DELIVERY("Delivery", "📦"),
+    TRAVEL("Travel", "✈️"),
+    DOCUMENT("Document", "📄"),
+    OTHER("Other", "🗂️")
+}
+
+enum class Actionability(val displayName: String) {
+    ACTIONABLE("Actionable"),
+    INFORMATIONAL("Informational"),
+    UNCERTAIN("Uncertain")
+}
+
 enum class ItemType(val displayName: String, val iconEmoji: String) {
     TASK("Task", "✅"),
     DEADLINE("Deadline", "⏰"),
@@ -15,7 +44,9 @@ enum class ItemType(val displayName: String, val iconEmoji: String) {
     DELIVERY("Delivery", "📦"),
     EVENT("Event", "🎉"),
     REMINDER("Reminder", "🔔"),
-    IMPORTANT("Important Info", "📌")
+    IMPORTANT("Important Info", "📌"),
+    DOCUMENT("Document", "📄"),
+    NOTE("Note", "📝")
 }
 
 enum class ItemCategory(val displayName: String, val iconEmoji: String) {
@@ -64,6 +95,8 @@ data class UserItem(
     val description: String = "",
     val type: String = ItemType.TASK.name,
     val category: String = ItemCategory.GENERAL.name,
+    val contentType: String = ContentType.GENERAL_INFORMATION.name,
+    val actionability: String = Actionability.INFORMATIONAL.name,
     val action: String = "",
     val dueDate: String? = null,           // YYYY-MM-DD
     val dueTime: String? = null,           // HH:mm
@@ -79,6 +112,11 @@ data class UserItem(
     val priority: String = ItemPriority.MEDIUM.name,
     val status: String = ItemStatus.ACTIVE.name,
     val confidence: Float = 0.85f,         // 0.0 to 1.0
+    val contentTypeConfidence: Float = 0.85f,
+    val actionabilityConfidence: Float = 0.85f,
+    val extractionConfidence: Float = 0.0f,
+    val evidence: String? = null,
+    val reason: String? = null,
     val explanation: String? = null,
     val reminderTiming: String = ReminderTiming.ONE_DAY_BEFORE.name,
     val reminderTimestamp: Long? = null,
@@ -90,9 +128,15 @@ data class UserItem(
 )
 
 data class AIAnalysisResult(
+    val contentType: String = ContentType.GENERAL_INFORMATION.name,
+    val actionability: String = Actionability.INFORMATIONAL.name,
+    val contentTypeConfidence: Float = 0.90f,
+    val actionabilityConfidence: Float = 0.90f,
+    val extractionConfidence: Float = 0.0f,
     val title: String,
+    val summary: String = "",
     val description: String = "",
-    val type: String = ItemType.TASK.name,
+    val type: String = ItemType.NOTE.name,
     val category: String = ItemCategory.GENERAL.name,
     val action: String = "",
     val date: String? = null,             // YYYY-MM-DD or readable
@@ -102,11 +146,20 @@ data class AIAnalysisResult(
     val person: String? = null,
     val organization: String? = null,
     val location: String? = null,
+    val merchant: String? = null,
+    val product: String? = null,
+    val subscription: String? = null,
+    val appointment: String? = null,
     val priority: String = ItemPriority.MEDIUM.name,
     val confidence: Float = 0.85f,
+    val evidence: String? = null,
+    val reason: String? = null,
     val explanation: String? = null,
     val returnWindowDays: Int? = null,
     val warrantyExpiryDate: String? = null,
     val subscriptionInterval: String? = null,
-    val isActionable: Boolean = true
+    val isActionable: Boolean = false,
+    val isUncertain: Boolean = false,
+    val validationPassed: Boolean = true
 )
+

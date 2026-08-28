@@ -6,7 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.example.data.model.UserItem
 
-@Database(entities = [UserItem::class], version = 1, exportSchema = false)
+@Database(entities = [UserItem::class], version = 2, exportSchema = false)
 abstract class LifeVaultDatabase : RoomDatabase() {
     abstract fun userItemDao(): UserItemDao
 
@@ -20,7 +20,9 @@ abstract class LifeVaultDatabase : RoomDatabase() {
                     context.applicationContext,
                     LifeVaultDatabase::class.java,
                     "lifevault_database"
-                ).build()
+                )
+                    .fallbackToDestructiveMigration()
+                    .build()
                 INSTANCE = instance
                 instance
             }

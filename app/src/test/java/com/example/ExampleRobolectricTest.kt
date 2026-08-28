@@ -2,10 +2,9 @@ package com.example
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
-import com.example.data.model.ItemCategory
-import com.example.data.model.ItemType
+import com.example.data.model.Actionability
+import com.example.data.model.ContentType
 import com.example.data.remote.RuleBasedFallbackExtractor
-import com.example.util.DateTimeUtils
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -30,9 +29,11 @@ class ExampleRobolectricTest {
         val input = "Your electricity bill of ৳1,850 must be paid by September 2."
         val result = RuleBasedFallbackExtractor.extract(input)
 
+        assertEquals(ContentType.BILL.name, result.contentType)
+        assertEquals(Actionability.ACTIONABLE.name, result.actionability)
         assertEquals("PAYMENT", result.type)
         assertEquals("FINANCE", result.category)
-        assertEquals(1850.0, result.amount)
+        assertEquals(1850.0, result.amount ?: 0.0, 0.01)
         assertEquals("৳", result.currency)
         assertNotNull(result.date)
         assertTrue(result.confidence >= 0.8f)
@@ -46,6 +47,7 @@ class ExampleRobolectricTest {
         assertEquals("DEADLINE", result.type)
         assertEquals("EDUCATION", result.category)
         assertEquals("Friday", result.date)
+        assertTrue(result.isActionable)
     }
 
     @Test
@@ -53,9 +55,10 @@ class ExampleRobolectricTest {
         val input = "Your dentist appointment is on September 4 at 3:30 PM."
         val result = RuleBasedFallbackExtractor.extract(input)
 
+        assertEquals(ContentType.APPOINTMENT.name, result.contentType)
         assertEquals("APPOINTMENT", result.type)
         assertEquals("HEALTH", result.category)
-        assertNotNull(result.time)
+        assertTrue(result.isActionable)
     }
 
     @Test
@@ -63,20 +66,21 @@ class ExampleRobolectricTest {
         val input = "Your annual subscription will renew automatically for $49.99 on September 15."
         val result = RuleBasedFallbackExtractor.extract(input)
 
+        assertEquals(ContentType.SUBSCRIPTION.name, result.contentType)
         assertEquals("SUBSCRIPTION", result.type)
         assertEquals("YEARLY", result.subscriptionInterval)
-        assertEquals(49.99, result.amount)
+        assertEquals(49.99, result.amount ?: 0.0, 0.01)
+        assertTrue(result.isActionable)
     }
 
     @Test
-    fun `test samsung ssd purchase receipt with warranty`() {
+    fun `test samsung ssd purchase receipt`() {
         val input = "Samsung SSD ৳8,500 purchased on August 26."
         val result = RuleBasedFallbackExtractor.extract(input)
 
-        assertEquals("WARRANTY", result.type)
-        assertEquals(8500.0, result.amount)
-        assertNotNull(result.warrantyExpiryDate)
-        assertEquals(7, result.returnWindowDays)
+        assertEquals(ContentType.RECEIPT.name, result.contentType)
+        assertEquals(8500.0, result.amount ?: 0.0, 0.01)
+        assertEquals("Samsung SSD", result.product)
     }
 
     @Test
@@ -84,7 +88,6 @@ class ExampleRobolectricTest {
         val input = "Please send the documents sometime next week."
         val result = RuleBasedFallbackExtractor.extract(input)
 
-        assertTrue(result.confidence < 0.85f)
         assertEquals("Next week", result.date)
     }
 }

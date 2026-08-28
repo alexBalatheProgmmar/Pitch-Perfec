@@ -3,6 +3,11 @@ package com.example.data.remote
 import android.graphics.Bitmap
 import android.util.Base64
 import com.example.data.model.AIAnalysisResult
+import com.example.data.model.Actionability
+import com.example.data.model.ContentType
+import com.example.data.model.ItemCategory
+import com.example.data.model.ItemPriority
+import com.example.data.model.ItemType
 import com.example.data.model.UserItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -14,30 +19,60 @@ class AIServiceImpl(
 ) : AIService {
 
     private val systemPrompt = """
-        You are the LifeVault information extraction engine. Extract only information explicitly supported by the provided content.
-        Never invent dates, times, amounts, names, deadlines, locations, or actions. Distinguish facts from suggestions.
-        If information is uncertain or ambiguous (e.g. 'sometime next week'), mark date as 'Next week' or null and lower the confidence score.
-        Return ONLY a JSON object matching this schema:
+        You are the LifeVault AI Understanding & Extraction Engine.
+        
+        PRIMARY RULE:
+        LifeVault must NEVER assume that every input contains a task, reminder, payment, deadline, receipt, subscription, or appointment.
+        Many inputs are simply:
+        - News articles & reports
+        - Educational content, textbooks, grammar guides, modifier explanations, formulas
+        - Personal notes & self-introductions (e.g., 'This is Alex')
+        - Conversations & greetings
+        - General reference documents & facts
+        
+        Never force content into an actionable category. If the input does not clearly contain an actionable event or explicit user obligation, classify it as INFORMATIONAL.
+        
+        PIPELINE RULES:
+        1. CONTENT TYPE CLASSIFICATION:
+           Allowed values: GENERAL_INFORMATION, NEWS_ARTICLE, EDUCATIONAL_CONTENT, PERSONAL_NOTE, CONVERSATION, TASK, DEADLINE, APPOINTMENT, EVENT, PAYMENT, BILL, RECEIPT, PURCHASE, SUBSCRIPTION, WARRANTY, RETURN, DELIVERY, TRAVEL, DOCUMENT, OTHER.
+        
+        2. ACTIONABILITY CLASSIFICATION:
+           Allowed values: ACTIONABLE, INFORMATIONAL, UNCERTAIN.
+           - "This is Alex." -> INFORMATIONAL
+           - "The capital of France is Paris." -> INFORMATIONAL
+           - "English Modifiers — A modifier is a word that modifies..." -> INFORMATIONAL
+           - "Chapter 5 — Total 8,500 words." -> INFORMATIONAL
+           - "Submit the assignment by Friday." -> ACTIONABLE
+           - "Your electricity bill of ৳1,850 is due September 2." -> ACTIONABLE
+           - "Your subscription renews September 15 for $49.99." -> ACTIONABLE
+           - "Your dentist appointment is September 4 at 3 PM." -> ACTIONABLE
+        
+        3. EVIDENCE & REASONING:
+           Provide evidence quoting directly from the user's text for any actionable item.
+           If informational, set action=null, due_date=null, amount=null, evidence=null, and explain in reason.
+        
+        Return ONLY valid JSON matching this schema:
         {
+          "content_type": "EDUCATIONAL_CONTENT",
+          "actionability": "INFORMATIONAL",
+          "confidence": {
+            "content_type": 0.98,
+            "actionability": 0.99,
+            "extraction": 0.0
+          },
           "title": "Short descriptive title (max 5 words)",
-          "description": "Clean summary",
-          "type": "TASK | DEADLINE | APPOINTMENT | PAYMENT | SUBSCRIPTION | RETURN | WARRANTY | DELIVERY | EVENT | REMINDER | IMPORTANT",
-          "category": "EDUCATION | FINANCE | SHOPPING | HEALTH | TRAVEL | WORK | HOME | TECHNOLOGY | EVENTS | DOCUMENTS | DELIVERY | WARRANTY | GENERAL",
-          "action": "What needs to be done",
-          "date": "Extracted date or null",
-          "time": "Extracted time or null",
-          "amount": 1850.0,
-          "currency": "৳ or $ or € or £ or null",
-          "person": "Name or null",
-          "organization": "Name or null",
-          "location": "Location or null",
-          "priority": "HIGH | MEDIUM | LOW",
-          "confidence": 0.95,
-          "explanation": "Clear reason why LifeVault detected this",
-          "returnWindowDays": null,
-          "warrantyExpiryDate": null,
-          "subscriptionInterval": null,
-          "isActionable": true
+          "summary": "Clean summary of content",
+          "action": null,
+          "due_date": null,
+          "due_time": null,
+          "amount": null,
+          "currency": null,
+          "merchant": null,
+          "product": null,
+          "subscription": null,
+          "appointment": null,
+          "evidence": null,
+          "reason": "Clear explanation of why this was classified as informational or actionable"
         }
     """.trimIndent()
 
@@ -51,7 +86,7 @@ class AIServiceImpl(
             val request = GeminiRequest(
                 contents = listOf(
                     GeminiContent(
-                        parts = listOf(GeminiPart(text = "Extract structured LifeVault info from this content:\n\n$text"))
+                        parts = listOf(GeminiPart(text = "Analyze and extract structured LifeVault data from this input:\n\n$text"))
                     )
                 ),
                 systemInstruction = GeminiContent(
@@ -85,9 +120,9 @@ class AIServiceImpl(
         try {
             val base64Image = bitmapToBase64(bitmap)
             val promptText = if (!promptHint.isNullOrBlank()) {
-                "Analyze this image and additional context: $promptHint"
+                "Analyze this image and context:\n$promptHint"
             } else {
-                "Analyze this image (document, receipt, screenshot, or bill) and extract all actionable deadlines, payments, warranties, or information."
+                "Analyze this image (document, receipt, screenshot, or bill) accurately according to the classification rules."
             }
 
             val request = GeminiRequest(
@@ -127,7 +162,7 @@ class AIServiceImpl(
             "No saved items in LifeVault yet."
         } else {
             contextItems.joinToString("\n---\n") { item ->
-                "Title: ${item.title}, Type: ${item.type}, Category: ${item.category}, Due: ${item.dueDate ?: "None"} ${item.dueTime ?: ""}, Amount: ${item.currency ?: ""}${item.amount ?: ""}, Status: ${item.status}, Action: ${item.action}, Notes: ${item.description}"
+                "Title: ${item.title}, Type: ${item.type}, Category: ${item.category}, ContentType: ${item.contentType}, Actionability: ${item.actionability}, Due: ${item.dueDate ?: "None"} ${item.dueTime ?: ""}, Amount: ${item.currency ?: ""}${item.amount ?: ""}, Status: ${item.status}, Action: ${item.action}, Notes: ${item.description}"
             }
         }
 
@@ -183,7 +218,7 @@ class AIServiceImpl(
                 }
             }
             q.contains("bill") || q.contains("payment") || q.contains("বিদ্যুৎ") || q.contains("টাকা") -> {
-                val bills = active.filter { it.type == "PAYMENT" || it.category == "FINANCE" }
+                val bills = active.filter { it.type == "PAYMENT" || it.category == "FINANCE" || it.contentType == "BILL" }
                 if (bills.isNotEmpty()) {
                     "Here are your pending payments:\n" + bills.joinToString("\n") {
                         val amt = if (it.amount != null) "${it.currency ?: "৳"}${it.amount}" else ""
@@ -194,7 +229,7 @@ class AIServiceImpl(
                 }
             }
             q.contains("warranty") || q.contains("ওয়ারেন্টি") || q.contains("expire") -> {
-                val warranties = contextItems.filter { it.type == "WARRANTY" || it.warrantyExpiryDate != null }
+                val warranties = contextItems.filter { it.type == "WARRANTY" || it.warrantyExpiryDate != null || it.contentType == "WARRANTY" }
                 if (warranties.isNotEmpty()) {
                     "Here are your warranties:\n" + warranties.joinToString("\n") {
                         "• ${it.title}: Expires ${it.warrantyExpiryDate ?: "August 2027"}"
@@ -218,49 +253,88 @@ class AIServiceImpl(
             val cleaned = jsonString.trim().removePrefix("```json").removePrefix("```").removeSuffix("```").trim()
             val obj = JSONObject(cleaned)
 
+            val contentType = obj.optString("content_type", ContentType.GENERAL_INFORMATION.name).uppercase()
+            val actionability = obj.optString("actionability", Actionability.INFORMATIONAL.name).uppercase()
+
+            val confidenceObj = obj.optJSONObject("confidence")
+            val contentTypeConfidence = confidenceObj?.optDouble("content_type", 0.90)?.toFloat() ?: 0.90f
+            val actionabilityConfidence = confidenceObj?.optDouble("actionability", 0.90)?.toFloat() ?: 0.90f
+            val extractionConfidence = confidenceObj?.optDouble("extraction", 0.0)?.toFloat() ?: 0.0f
+
             val title = obj.optString("title", rawText.take(30))
-            val description = obj.optString("description", rawText)
-            val type = obj.optString("type", "TASK")
-            val category = obj.optString("category", "GENERAL")
-            val action = obj.optString("action", "Review item")
-            val date = if (obj.isNull("date") || obj.optString("date").isBlank() || obj.optString("date") == "null") null else obj.optString("date")
-            val time = if (obj.isNull("time") || obj.optString("time").isBlank() || obj.optString("time") == "null") null else obj.optString("time")
+            val summary = obj.optString("summary", rawText.take(100))
+            val action = if (obj.isNull("action") || obj.optString("action").isBlank() || obj.optString("action") == "null") "" else obj.optString("action")
+            val date = if (obj.isNull("due_date") || obj.optString("due_date").isBlank() || obj.optString("due_date") == "null") null else obj.optString("due_date")
+            val time = if (obj.isNull("due_time") || obj.optString("due_time").isBlank() || obj.optString("due_time") == "null") null else obj.optString("due_time")
             val amount = if (obj.has("amount") && !obj.isNull("amount")) obj.optDouble("amount") else null
             val currency = if (obj.isNull("currency") || obj.optString("currency").isBlank() || obj.optString("currency") == "null") null else obj.optString("currency")
-            val person = if (obj.isNull("person") || obj.optString("person").isBlank() || obj.optString("person") == "null") null else obj.optString("person")
-            val organization = if (obj.isNull("organization") || obj.optString("organization").isBlank() || obj.optString("organization") == "null") null else obj.optString("organization")
-            val location = if (obj.isNull("location") || obj.optString("location").isBlank() || obj.optString("location") == "null") null else obj.optString("location")
-            val priority = obj.optString("priority", "MEDIUM")
-            val confidence = obj.optDouble("confidence", 0.85).toFloat()
-            val explanation = obj.optString("explanation", "Extracted by LifeVault AI")
-            val returnWindowDays = if (obj.has("returnWindowDays") && !obj.isNull("returnWindowDays")) obj.optInt("returnWindowDays") else null
-            val warrantyExpiryDate = if (obj.isNull("warrantyExpiryDate") || obj.optString("warrantyExpiryDate").isBlank() || obj.optString("warrantyExpiryDate") == "null") null else obj.optString("warrantyExpiryDate")
-            val subscriptionInterval = if (obj.isNull("subscriptionInterval") || obj.optString("subscriptionInterval").isBlank() || obj.optString("subscriptionInterval") == "null") null else obj.optString("subscriptionInterval")
-            val isActionable = obj.optBoolean("isActionable", true)
+            val merchant = if (obj.isNull("merchant") || obj.optString("merchant").isBlank() || obj.optString("merchant") == "null") null else obj.optString("merchant")
+            val product = if (obj.isNull("product") || obj.optString("product").isBlank() || obj.optString("product") == "null") null else obj.optString("product")
+            val subscription = if (obj.isNull("subscription") || obj.optString("subscription").isBlank() || obj.optString("subscription") == "null") null else obj.optString("subscription")
+            val appointment = if (obj.isNull("appointment") || obj.optString("appointment").isBlank() || obj.optString("appointment") == "null") null else obj.optString("appointment")
+            val evidence = if (obj.isNull("evidence") || obj.optString("evidence").isBlank() || obj.optString("evidence") == "null") null else obj.optString("evidence")
+            val reason = if (obj.isNull("reason") || obj.optString("reason").isBlank() || obj.optString("reason") == "null") null else obj.optString("reason")
 
-            AIAnalysisResult(
+            // Map to UI legacy fields
+            val (itemType, itemCategory) = mapToTypeAndCategory(contentType, actionability)
+
+            val rawResult = AIAnalysisResult(
+                contentType = contentType,
+                actionability = actionability,
+                contentTypeConfidence = contentTypeConfidence,
+                actionabilityConfidence = actionabilityConfidence,
+                extractionConfidence = extractionConfidence,
                 title = title,
-                description = description,
-                type = type,
-                category = category,
+                summary = summary,
+                description = rawText,
+                type = itemType.name,
+                category = itemCategory.name,
                 action = action,
                 date = date,
                 time = time,
                 amount = if (amount?.isNaN() == true) null else amount,
                 currency = currency,
-                person = person,
-                organization = organization,
-                location = location,
-                priority = priority,
-                confidence = confidence,
-                explanation = explanation,
-                returnWindowDays = returnWindowDays,
-                warrantyExpiryDate = warrantyExpiryDate,
-                subscriptionInterval = subscriptionInterval,
-                isActionable = isActionable
+                merchant = merchant,
+                product = product,
+                subscription = subscription,
+                appointment = appointment,
+                priority = if (actionability == Actionability.ACTIONABLE.name) ItemPriority.HIGH.name else ItemPriority.LOW.name,
+                confidence = (contentTypeConfidence * 0.4f + actionabilityConfidence * 0.6f).coerceIn(0.0f, 1.0f),
+                evidence = evidence,
+                reason = reason,
+                explanation = reason ?: "Extracted by LifeVault AI",
+                isActionable = actionability == Actionability.ACTIONABLE.name,
+                isUncertain = actionability == Actionability.UNCERTAIN.name
             )
+
+            // Pass through validation layer
+            AIResultValidator.validate(rawResult, rawText).validatedResult
         } catch (e: Exception) {
             RuleBasedFallbackExtractor.extract(rawText)
+        }
+    }
+
+    private fun mapToTypeAndCategory(contentType: String, actionability: String): Pair<ItemType, ItemCategory> {
+        if (actionability == Actionability.INFORMATIONAL.name) {
+            return when (contentType) {
+                ContentType.EDUCATIONAL_CONTENT.name -> ItemType.DOCUMENT to ItemCategory.EDUCATION
+                ContentType.NEWS_ARTICLE.name -> ItemType.DOCUMENT to ItemCategory.DOCUMENTS
+                ContentType.RECEIPT.name, ContentType.PURCHASE.name -> ItemType.DOCUMENT to ItemCategory.SHOPPING
+                ContentType.PERSONAL_NOTE.name, ContentType.CONVERSATION.name -> ItemType.NOTE to ItemCategory.GENERAL
+                else -> ItemType.NOTE to ItemCategory.GENERAL
+            }
+        }
+        return when (contentType) {
+            ContentType.BILL.name, ContentType.PAYMENT.name -> ItemType.PAYMENT to ItemCategory.FINANCE
+            ContentType.SUBSCRIPTION.name -> ItemType.SUBSCRIPTION to ItemCategory.FINANCE
+            ContentType.APPOINTMENT.name -> ItemType.APPOINTMENT to ItemCategory.HEALTH
+            ContentType.DEADLINE.name -> ItemType.DEADLINE to ItemCategory.GENERAL
+            ContentType.TASK.name -> ItemType.TASK to ItemCategory.GENERAL
+            ContentType.RECEIPT.name, ContentType.PURCHASE.name -> ItemType.DOCUMENT to ItemCategory.SHOPPING
+            ContentType.WARRANTY.name -> ItemType.WARRANTY to ItemCategory.WARRANTY
+            ContentType.RETURN.name -> ItemType.RETURN to ItemCategory.SHOPPING
+            ContentType.DELIVERY.name -> ItemType.DELIVERY to ItemCategory.DELIVERY
+            else -> ItemType.TASK to ItemCategory.GENERAL
         }
     }
 
